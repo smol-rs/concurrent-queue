@@ -1,0 +1,20 @@
+[package]
+name = "concurrent-queue"
+version = "1.0.0"
+authors = ["Stjepan Glavina <stjepang@gmail.com>"]
+edition = "2018"
+description = "Concurrent multi-producer multi-consumer queue"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/stjepang/async-mutex"
+homepage = "https://github.com/stjepang/async-mutex"
+documentation = "https://docs.rs/async-mutex"
+keywords = ["channel", "mpmc", "spsc", "spmc", "mpsc"]
+categories = ["concurrency"]
+readme = "README.md"
+
+[dependencies]
+cache-padded = "1.0.0"
+
+[dev-dependencies]
+easy-parallel = "2.1.0"
+fastrand = "1.0.0"
