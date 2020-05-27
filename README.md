@@ -1,41 +1,38 @@
-# async-mutex
+# concurrent-queue
 
-[![Build](https://github.com/stjepang/async-mutex/workflows/Build%20and%20test/badge.svg)](
-https://github.com/stjepang/async-mutex/actions)
+[![Build](https://github.com/stjepang/concurrent-queue/workflows/Build%20and%20test/badge.svg)](
+https://github.com/stjepang/concurrent-queue/actions)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](
-https://github.com/stjepang/async-mutex)
-[![Cargo](https://img.shields.io/crates/v/async-mutex.svg)](
-https://crates.io/crates/async-mutex)
-[![Documentation](https://docs.rs/async-mutex/badge.svg)](
-https://docs.rs/async-mutex)
+https://github.com/stjepang/concurrent-queue)
+[![Cargo](https://img.shields.io/crates/v/concurrent-queue.svg)](
+https://crates.io/crates/concurrent-queue)
+[![Documentation](https://docs.rs/concurrent-queue/badge.svg)](
+https://docs.rs/concurrent-queue)
 
-An async mutex.
+A concurrent multi-producer multi-consumer queue.
 
-The locking mechanism uses eventual fairness to ensure locking will be fair on average without
-sacrificing performance. This is done by forcing a fair lock whenever a lock operation is
-starved for longer than 0.5 milliseconds.
+There are two kinds of queues:
+
+1. Bounded queue with limited capacity.
+2. Unbounded queue with unlimited capacity.
+
+Queues also have the capability to get closed at any point. When closed, no more items can be
+pushed into the queue, although the remaining items can still be popped.
+
+These features make it easy to build channels similar to `std::sync::mpsc` on top of this
+crate.
 
 ## Examples
 
 ```rust
-use async_mutex::Mutex;
-use smol::Task;
-use std::sync::Arc;
+use concurrent_queue::ConcurrentQueue;
 
-let m = Arc::new(Mutex::new(0));
-let mut tasks = vec![];
+let q = ConcurrentQueue::unbounded();
+q.push(1).unwrap();
+q.push(2).unwrap();
 
-for _ in 0..10 {
-    let m = m.clone();
-    tasks.push(Task::spawn(async move {
-        *m.lock().await += 1;
-    }));
-}
-
-for t in tasks {
-    t.await;
-}
-assert_eq!(*m.lock().await, 10);
+assert_eq!(q.pop(), Ok(1));
+assert_eq!(q.pop(), Ok(2));
 ```
 
 ## License
