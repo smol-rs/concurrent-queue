@@ -330,7 +330,7 @@ pub enum PopError {
 }
 
 impl PopError {
-    /// Returns `true` if the queue is empty.
+    /// Returns `true` if the queue is empty but not closed.
     pub fn is_empty(&self) -> bool {
         match self {
             PopError::Empty => true,
@@ -386,7 +386,7 @@ impl<T> PushError<T> {
         }
     }
 
-    /// Returns `true` if the queue is full.
+    /// Returns `true` if the queue is full but not closed.
     pub fn is_full(&self) -> bool {
         match self {
             PushError::Full(_) => true,
