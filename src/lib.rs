@@ -329,6 +329,24 @@ pub enum PopError {
     Closed,
 }
 
+impl PopError {
+    /// Returns `true` if the queue is empty.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            PopError::Empty => true,
+            PopError::Closed => false,
+        }
+    }
+
+    /// Returns `true` if the queue is empty and closed.
+    pub fn is_closed(&self) -> bool {
+        match self {
+            PopError::Empty => false,
+            PopError::Closed => true,
+        }
+    }
+}
+
 impl error::Error for PopError {}
 
 impl fmt::Debug for PopError {
@@ -357,6 +375,32 @@ pub enum PushError<T> {
 
     /// The queue is closed.
     Closed(T),
+}
+
+impl<T> PushError<T> {
+    /// Unwraps the item that couldn't be pushed.
+    pub fn into_inner(self) -> T {
+        match self {
+            PushError::Full(t) => t,
+            PushError::Closed(t) => t,
+        }
+    }
+
+    /// Returns `true` if the queue is full.
+    pub fn is_full(&self) -> bool {
+        match self {
+            PushError::Full(_) => true,
+            PushError::Closed(_) => false,
+        }
+    }
+
+    /// Returns `true` if the queue is closed.
+    pub fn is_closed(&self) -> bool {
+        match self {
+            PushError::Full(_) => false,
+            PushError::Closed(_) => true,
+        }
+    }
 }
 
 impl<T: fmt::Debug> error::Error for PushError<T> {}
