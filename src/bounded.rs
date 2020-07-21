@@ -49,7 +49,7 @@ pub struct Bounded<T> {
     /// If this bit is set in the tail, that means the queue is closed.
     mark_bit: usize,
 
-    /// Indicates that dropping an `Bounded<T>` may drop values of type `T`.
+    /// Indicates that dropping a `Bounded<T>` may drop values of type `T`.
     _marker: PhantomData<T>,
 }
 
@@ -288,12 +288,7 @@ impl<T> Bounded<T> {
     /// Returns `true` if this call closed the queue.
     pub fn close(&self) -> bool {
         let tail = self.tail.fetch_or(self.mark_bit, Ordering::SeqCst);
-
-        if tail & self.mark_bit == 0 {
-            true
-        } else {
-            false
-        }
+        tail & self.mark_bit == 0
     }
 
     /// Returns `true` if the queue is closed.

@@ -365,12 +365,7 @@ impl<T> Unbounded<T> {
     /// Returns `true` if this call closed the queue.
     pub fn close(&self) -> bool {
         let tail = self.tail.index.fetch_or(MARK_BIT, Ordering::SeqCst);
-
-        if tail & MARK_BIT == 0 {
-            true
-        } else {
-            false
-        }
+        tail & MARK_BIT == 0
     }
 
     /// Returns `true` if the queue is closed.
