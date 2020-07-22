@@ -229,6 +229,80 @@ impl<T> Bounded<T> {
         }
     }
 
+    /// Attempts to pop an item from the queue.
+    pub fn drain(&self) -> Result<Vec<T>, PopError> {
+        loop {
+            // Load the tail, then load the head.
+            let tail = self.tail.load(Ordering::SeqCst);
+            let head = self.head.load(Ordering::SeqCst);
+
+            // If the tail didn't change, we've got consistent values to work with.
+            let len = if self.tail.load(Ordering::SeqCst) == tail {
+                let hix = head & (self.mark_bit - 1);
+                let tix = tail & (self.mark_bit - 1);
+
+                if hix < tix {
+                    tix - hix
+                } else if hix > tix {
+                    self.cap - hix + tix
+                } else if (tail & !self.mark_bit) == head {
+                    if tail & self.mark_bit != 0 {
+                        return Err(PopError::Closed);
+                    } else {
+                        return Ok(Vec::new());
+                    }
+                } else {
+                    self.cap
+                }
+            } else {
+                continue;
+            };
+
+            let index = head & (self.mark_bit - 1);
+            let lap = head & !(self.one_lap - 1);
+
+            // Inspect the corresponding slot.
+            let slot = unsafe { &*self.buffer.add((index + len - 1) % self.cap) };
+            let stamp = slot.stamp.load(Ordering::Acquire);
+
+            // If the the stamp is ahead of the head by 1, we may attempt to pop.
+            let new = if index + len < self.cap {
+                // Same lap, incremented index.
+                // Set to `{ lap: lap, mark: 0, index: index + len }`.
+                head + len
+            } else {
+                // One lap forward, index wraps around to zero.
+                // Set to `{ lap: lap.wrapping_add(1), mark: 0, index: 0 }`.
+                lap.wrapping_add(self.one_lap) + (index + len) - self.cap
+            };
+            if new == stamp {
+                // Try moving the head.
+                match self.head.compare_exchange_weak(
+                    head,
+                    new,
+                    Ordering::SeqCst,
+                    Ordering::Relaxed,
+                ) {
+                    Ok(_) => {
+                        // Read the value from the slot and update the stamp.
+                        let mut res = Vec::with_capacity(len);
+                        for i in 0..len {
+                            let slot = unsafe { &*self.buffer.add((index + i) % self.cap) };
+                            res.push(unsafe { slot.value.get().read().assume_init() });
+                        }
+                        slot.stamp
+                            .store(head.wrapping_add(self.one_lap), Ordering::Release);
+                        return Ok(res);
+                    }
+                    Err(_h) => {}
+                }
+            } else {
+                // Yield because we need to wait for the stamp to get updated.
+                thread::yield_now();
+            }
+        }
+    }
+
     /// Returns the number of items in the queue.
     pub fn len(&self) -> usize {
         loop {

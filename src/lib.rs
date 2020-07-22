@@ -167,6 +167,50 @@ impl<T> ConcurrentQueue<T> {
         }
     }
 
+    /// Drains the queue returning all availalbe items in a vector.
+    ///
+    /// If the queue is closed, an error is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use concurrent_queue::{ConcurrentQueue, PopError};
+    ///
+    /// let q = ConcurrentQueue::bounded(3);
+    ///
+    /// // Drain an empty vector when the queue is empty.
+    /// assert_eq!(dbg!(q.drain()), Ok(vec![]));
+    ///
+    /// // Push one item and close the queue.
+    /// assert_eq!(q.push(10), Ok(()));
+    ///
+    /// // Drain returns one element.
+    /// assert_eq!(dbg!(q.drain()), Ok(vec![10]));
+    ///
+    /// // Push one item and close the queue.
+    /// assert_eq!(q.push(11), Ok(()));
+    ///
+    /// // Push one item and close the queue.
+    /// assert_eq!(q.push(12), Ok(()));
+    ///
+    /// // Push one item and close the queue.
+    /// assert_eq!(q.push(13), Ok(()));
+    /// q.close();
+    ///
+    /// // Remaining items can be popped.
+    /// assert_eq!(dbg!(q.drain()), Ok(vec![11, 12, 13]));
+    ///
+    /// // Again, pop errors when the queue is empty,
+    /// // but now also indicates that the queue is closed.
+    /// assert_eq!(dbg!(q.drain()), Err(PopError::Closed));
+    /// ```
+    pub fn drain(&self) -> Result<Vec<T>, PopError> {
+        match &self.0 {
+            Inner::Bounded(q) => q.drain(),
+            Inner::Unbounded(_q) => unimplemented!(),
+        }
+    }
+
     /// Returns `true` if the queue is empty.
     ///
     /// # Examples
