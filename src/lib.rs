@@ -170,6 +170,7 @@ impl<T> ConcurrentQueue<T> {
     /// Drains the queue returning all availalbe items in a vector.
     ///
     /// If the queue is closed, an error is returned.
+    /// If the queue is empty, an error is returned.
     ///
     /// # Examples
     ///
@@ -179,7 +180,7 @@ impl<T> ConcurrentQueue<T> {
     /// let q = ConcurrentQueue::bounded(3);
     ///
     /// // Drain an empty vector when the queue is empty.
-    /// assert_eq!(dbg!(q.drain()), Ok(vec![]));
+    /// assert_eq!(dbg!(q.drain()), Err(PopError::Empty));
     ///
     /// // Push one item and close the queue.
     /// assert_eq!(q.push(10), Ok(()));

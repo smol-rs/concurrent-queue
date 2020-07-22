@@ -249,7 +249,7 @@ impl<T> Bounded<T> {
                     if tail & self.mark_bit != 0 {
                         return Err(PopError::Closed);
                     } else {
-                        return Ok(Vec::new());
+                        return Err(PopError::Empty);
                     }
                 } else {
                     self.cap
