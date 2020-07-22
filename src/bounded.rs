@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::mem::{self, MaybeUninit};
-use std::sync::atomic::{self, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
 use cache_padded::CachePadded;
@@ -145,7 +145,7 @@ impl<T> Bounded<T> {
                     }
                 }
             } else if stamp.wrapping_add(self.one_lap) == tail + 1 {
-                atomic::fence(Ordering::SeqCst);
+                crate::full_fence();
                 let head = self.head.load(Ordering::Relaxed);
 
                 // If the head lags one lap behind the tail as well...
@@ -207,7 +207,7 @@ impl<T> Bounded<T> {
                     }
                 }
             } else if stamp == head {
-                atomic::fence(Ordering::SeqCst);
+                crate::full_fence();
                 let tail = self.tail.load(Ordering::Relaxed);
 
                 // If the tail equals the head, that means the queue is empty.

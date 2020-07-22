@@ -2,7 +2,7 @@ use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ptr;
-use std::sync::atomic::{self, AtomicPtr, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use std::thread;
 
 use cache_padded::CachePadded;
@@ -242,7 +242,7 @@ impl<T> Unbounded<T> {
             let mut new_head = head + (1 << SHIFT);
 
             if new_head & MARK_BIT == 0 {
-                atomic::fence(Ordering::SeqCst);
+                crate::full_fence();
                 let tail = self.tail.index.load(Ordering::Relaxed);
 
                 // If the tail equals the head, that means the queue is empty.
