@@ -1,3 +1,7 @@
+# Version 1.1.2
+
+- Optimize `SeqCst` fences.
+
 # Version 1.1.1
 
 - Clarify errors in docs.
