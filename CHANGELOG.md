@@ -1,3 +1,8 @@
+# Version 1.2.0
+
+- Update dependencies.
+- Implement `UnwindSafe` and `RefUnwindSafe` for `ConcurrentQueue`.
+
 # Version 1.1.2
 
 - Optimize `SeqCst` fences.
