@@ -32,6 +32,7 @@
 
 use std::error;
 use std::fmt;
+use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::sync::atomic::{self, AtomicUsize, Ordering};
 
 use crate::bounded::Bounded;
@@ -61,6 +62,9 @@ pub struct ConcurrentQueue<T>(Inner<T>);
 
 unsafe impl<T: Send> Send for ConcurrentQueue<T> {}
 unsafe impl<T: Send> Sync for ConcurrentQueue<T> {}
+
+impl<T> UnwindSafe for ConcurrentQueue<T> {}
+impl<T> RefUnwindSafe for ConcurrentQueue<T> {}
 
 enum Inner<T> {
     Bounded(Bounded<T>),
