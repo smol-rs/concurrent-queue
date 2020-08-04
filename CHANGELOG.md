@@ -1,3 +1,7 @@
+# Version 1.2.1
+
+- In the bounded queue, use boxed slice instead of raw pointers.
+
 # Version 1.2.0
 
 - Update dependencies.
