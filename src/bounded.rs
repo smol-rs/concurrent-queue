@@ -1,6 +1,6 @@
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
-use std::mem::{self, MaybeUninit};
+use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
@@ -38,10 +38,7 @@ pub struct Bounded<T> {
     tail: CachePadded<AtomicUsize>,
 
     /// The buffer holding slots.
-    buffer: *mut Slot<T>,
-
-    /// The queue capacity.
-    cap: usize,
+    buffer: Box<[Slot<T>]>,
 
     /// A stamp with the value of `{ lap: 1, mark: 0, index: 0 }`.
     one_lap: usize,
@@ -64,29 +61,21 @@ impl<T> Bounded<T> {
         let tail = 0;
 
         // Allocate a buffer of `cap` slots initialized with stamps.
-        let buffer = {
-            let mut v: Vec<Slot<T>> = (0..cap)
-                .map(|i| {
-                    // Set the stamp to `{ lap: 0, mark: 0, index: i }`.
-                    Slot {
-                        stamp: AtomicUsize::new(i),
-                        value: UnsafeCell::new(MaybeUninit::uninit()),
-                    }
-                })
-                .collect();
-
-            let ptr = v.as_mut_ptr();
-            mem::forget(v);
-            ptr
-        };
+        let mut buffer = Vec::with_capacity(cap);
+        for i in 0..cap {
+            // Set the stamp to `{ lap: 0, mark: 0, index: i }`.
+            buffer.push(Slot {
+                stamp: AtomicUsize::new(i),
+                value: UnsafeCell::new(MaybeUninit::uninit()),
+            });
+        }
 
         // Compute constants `mark_bit` and `one_lap`.
         let mark_bit = (cap + 1).next_power_of_two();
         let one_lap = mark_bit * 2;
 
         Bounded {
-            buffer,
-            cap,
+            buffer: buffer.into(),
             one_lap,
             mark_bit,
             head: CachePadded::new(AtomicUsize::new(head)),
@@ -110,12 +99,12 @@ impl<T> Bounded<T> {
             let lap = tail & !(self.one_lap - 1);
 
             // Inspect the corresponding slot.
-            let slot = unsafe { &*self.buffer.add(index) };
+            let slot = &self.buffer[index];
             let stamp = slot.stamp.load(Ordering::Acquire);
 
             // If the tail and the stamp match, we may attempt to push.
             if tail == stamp {
-                let new_tail = if index + 1 < self.cap {
+                let new_tail = if index + 1 < self.buffer.len() {
                     // Same lap, incremented index.
                     // Set to `{ lap: lap, mark: 0, index: index + 1 }`.
                     tail + 1
@@ -173,12 +162,12 @@ impl<T> Bounded<T> {
             let lap = head & !(self.one_lap - 1);
 
             // Inspect the corresponding slot.
-            let slot = unsafe { &*self.buffer.add(index) };
+            let slot = &self.buffer[index];
             let stamp = slot.stamp.load(Ordering::Acquire);
 
             // If the the stamp is ahead of the head by 1, we may attempt to pop.
             if head + 1 == stamp {
-                let new = if index + 1 < self.cap {
+                let new = if index + 1 < self.buffer.len() {
                     // Same lap, incremented index.
                     // Set to `{ lap: lap, mark: 0, index: index + 1 }`.
                     head + 1
@@ -244,11 +233,11 @@ impl<T> Bounded<T> {
                 return if hix < tix {
                     tix - hix
                 } else if hix > tix {
-                    self.cap - hix + tix
+                    self.buffer.len() - hix + tix
                 } else if (tail & !self.mark_bit) == head {
                     0
                 } else {
-                    self.cap
+                    self.buffer.len()
                 };
             }
         }
@@ -280,7 +269,7 @@ impl<T> Bounded<T> {
 
     /// Returns the capacity of the queue.
     pub fn capacity(&self) -> usize {
-        self.cap
+        self.buffer.len()
     }
 
     /// Closes the queue.
@@ -305,23 +294,18 @@ impl<T> Drop for Bounded<T> {
         // Loop over all slots that hold a value and drop them.
         for i in 0..self.len() {
             // Compute the index of the next slot holding a value.
-            let index = if hix + i < self.cap {
+            let index = if hix + i < self.buffer.len() {
                 hix + i
             } else {
-                hix + i - self.cap
+                hix + i - self.buffer.len()
             };
 
             // Drop the value in the slot.
+            let slot = &self.buffer[index];
             unsafe {
-                let slot = &*self.buffer.add(index);
                 let value = slot.value.get().read().assume_init();
                 drop(value);
             }
-        }
-
-        // Finally, deallocate the buffer, but don't run any destructors.
-        unsafe {
-            Vec::from_raw_parts(self.buffer, 0, self.cap);
         }
     }
 }
