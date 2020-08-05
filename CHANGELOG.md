@@ -1,3 +1,7 @@
+# Version 1.2.2
+
+- Add a special, efficient `bounded(1)` implementation.
+
 # Version 1.2.1
 
 - In the bounded queue, use boxed slice instead of raw pointers.
