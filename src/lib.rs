@@ -36,9 +36,11 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::sync::atomic::{self, AtomicUsize, Ordering};
 
 use crate::bounded::Bounded;
+use crate::single::Single;
 use crate::unbounded::Unbounded;
 
 mod bounded;
+mod single;
 mod unbounded;
 
 /// A concurrent queue.
@@ -67,8 +69,9 @@ impl<T> UnwindSafe for ConcurrentQueue<T> {}
 impl<T> RefUnwindSafe for ConcurrentQueue<T> {}
 
 enum Inner<T> {
-    Bounded(Bounded<T>),
-    Unbounded(Unbounded<T>),
+    Single(Single<T>),
+    Bounded(Box<Bounded<T>>),
+    Unbounded(Box<Unbounded<T>>),
 }
 
 impl<T> ConcurrentQueue<T> {
@@ -88,7 +91,11 @@ impl<T> ConcurrentQueue<T> {
     /// let q = ConcurrentQueue::<i32>::bounded(100);
     /// ```
     pub fn bounded(cap: usize) -> ConcurrentQueue<T> {
-        ConcurrentQueue(Inner::Bounded(Bounded::new(cap)))
+        if cap == 1 {
+            ConcurrentQueue(Inner::Single(Single::new()))
+        } else {
+            ConcurrentQueue(Inner::Bounded(Box::new(Bounded::new(cap))))
+        }
     }
 
     /// Creates a new unbounded queue.
@@ -101,7 +108,7 @@ impl<T> ConcurrentQueue<T> {
     /// let q = ConcurrentQueue::<i32>::unbounded();
     /// ```
     pub fn unbounded() -> ConcurrentQueue<T> {
-        ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
+        ConcurrentQueue(Inner::Unbounded(Box::new(Unbounded::new())))
     }
 
     /// Attempts to push an item into the queue.
@@ -135,6 +142,7 @@ impl<T> ConcurrentQueue<T> {
     /// ```
     pub fn push(&self, value: T) -> Result<(), PushError<T>> {
         match &self.0 {
+            Inner::Single(q) => q.push(value),
             Inner::Bounded(q) => q.push(value),
             Inner::Unbounded(q) => q.push(value),
         }
@@ -167,6 +175,7 @@ impl<T> ConcurrentQueue<T> {
     /// ```
     pub fn pop(&self) -> Result<T, PopError> {
         match &self.0 {
+            Inner::Single(q) => q.pop(),
             Inner::Bounded(q) => q.pop(),
             Inner::Unbounded(q) => q.pop(),
         }
@@ -187,6 +196,7 @@ impl<T> ConcurrentQueue<T> {
     /// ```
     pub fn is_empty(&self) -> bool {
         match &self.0 {
+            Inner::Single(q) => q.is_empty(),
             Inner::Bounded(q) => q.is_empty(),
             Inner::Unbounded(q) => q.is_empty(),
         }
@@ -209,6 +219,7 @@ impl<T> ConcurrentQueue<T> {
     /// ```
     pub fn is_full(&self) -> bool {
         match &self.0 {
+            Inner::Single(q) => q.is_full(),
             Inner::Bounded(q) => q.is_full(),
             Inner::Unbounded(q) => q.is_full(),
         }
@@ -232,6 +243,7 @@ impl<T> ConcurrentQueue<T> {
     /// ```
     pub fn len(&self) -> usize {
         match &self.0 {
+            Inner::Single(q) => q.len(),
             Inner::Bounded(q) => q.len(),
             Inner::Unbounded(q) => q.len(),
         }
@@ -254,6 +266,7 @@ impl<T> ConcurrentQueue<T> {
     /// ```
     pub fn capacity(&self) -> Option<usize> {
         match &self.0 {
+            Inner::Single(_) => Some(1),
             Inner::Bounded(q) => Some(q.capacity()),
             Inner::Unbounded(_) => None,
         }
@@ -288,6 +301,7 @@ impl<T> ConcurrentQueue<T> {
     /// ```
     pub fn close(&self) -> bool {
         match &self.0 {
+            Inner::Single(q) => q.close(),
             Inner::Bounded(q) => q.close(),
             Inner::Unbounded(q) => q.close(),
         }
@@ -308,6 +322,7 @@ impl<T> ConcurrentQueue<T> {
     /// ```
     pub fn is_closed(&self) -> bool {
         match &self.0 {
+            Inner::Single(q) => q.is_closed(),
             Inner::Bounded(q) => q.is_closed(),
             Inner::Unbounded(q) => q.is_closed(),
         }
