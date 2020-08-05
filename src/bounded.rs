@@ -1,5 +1,4 @@
 use std::cell::UnsafeCell;
-use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
@@ -45,9 +44,6 @@ pub struct Bounded<T> {
 
     /// If this bit is set in the tail, that means the queue is closed.
     mark_bit: usize,
-
-    /// Indicates that dropping a `Bounded<T>` may drop values of type `T`.
-    _marker: PhantomData<T>,
 }
 
 impl<T> Bounded<T> {
@@ -80,7 +76,6 @@ impl<T> Bounded<T> {
             mark_bit,
             head: CachePadded::new(AtomicUsize::new(head)),
             tail: CachePadded::new(AtomicUsize::new(tail)),
-            _marker: PhantomData,
         }
     }
 

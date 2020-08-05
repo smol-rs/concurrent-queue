@@ -1,5 +1,4 @@
 use std::cell::UnsafeCell;
-use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::ptr;
 use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
@@ -119,9 +118,6 @@ pub struct Unbounded<T> {
 
     /// The tail of the queue.
     tail: CachePadded<Position<T>>,
-
-    /// Indicates that dropping a `Unbounded<T>` may drop values of type `T`.
-    _marker: PhantomData<T>,
 }
 
 impl<T> Unbounded<T> {
@@ -136,7 +132,6 @@ impl<T> Unbounded<T> {
                 block: AtomicPtr::new(ptr::null_mut()),
                 index: AtomicUsize::new(0),
             }),
-            _marker: PhantomData,
         }
     }
 
