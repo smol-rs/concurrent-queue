@@ -1,7 +1,7 @@
 use crate::facade::cell::UnsafeCell;
 use std::mem::MaybeUninit;
 use crate::facade::sync::atomic::{AtomicUsize, Ordering};
-use crate::facade::thread;
+use crate::facade::{thread, cell};
 
 use cache_padded::CachePadded;
 
@@ -118,9 +118,7 @@ impl<T> Bounded<T> {
                 ) {
                     Ok(_) => {
                         // Write the value into the slot and update the stamp.
-                        unsafe {
-                            slot.value.get().write(MaybeUninit::new(value));
-                        }
+                        unsafe { cell::write(&slot.value, MaybeUninit::new(value)); }
                         slot.stamp.store(tail + 1, Ordering::Release);
                         return Ok(());
                     }
@@ -181,7 +179,7 @@ impl<T> Bounded<T> {
                 ) {
                     Ok(_) => {
                         // Read the value from the slot and update the stamp.
-                        let value = unsafe { slot.value.get().read().assume_init() };
+                        let value = unsafe { cell::read(&slot.value).assume_init() };
                         slot.stamp
                             .store(head.wrapping_add(self.one_lap), Ordering::Release);
                         return Ok(value);
@@ -298,7 +296,7 @@ impl<T> Drop for Bounded<T> {
             // Drop the value in the slot.
             let slot = &self.buffer[index];
             unsafe {
-                let value = slot.value.get().read().assume_init();
+                let value = cell::read(&slot.value).assume_init();
                 drop(value);
             }
         }

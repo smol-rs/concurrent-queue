@@ -2,7 +2,7 @@ use crate::facade::cell::UnsafeCell;
 use std::mem::MaybeUninit;
 use std::ptr;
 use crate::facade::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
-use crate::facade::thread;
+use crate::facade::{thread, cell};
 
 use cache_padded::CachePadded;
 
@@ -37,6 +37,7 @@ struct Slot<T> {
 }
 
 impl<T> Slot<T> {
+    #[cfg(not(feature = "loom"))]
     const UNINIT: Slot<T> = Slot {
         value: UnsafeCell::new(MaybeUninit::uninit()),
         state: AtomicUsize::new(0),
@@ -64,9 +65,32 @@ struct Block<T> {
 impl<T> Block<T> {
     /// Creates an empty block.
     fn new() -> Block<T> {
+        #[cfg(not(feature = "loom"))]
+        let slots = [Slot::UNINIT; BLOCK_CAP];
+
+        #[cfg(feature = "loom")]
+        let slots = {
+            use std::convert::TryFrom;
+
+            let mut vec = Vec::with_capacity(BLOCK_CAP);
+            for _ in 0..BLOCK_CAP {
+                vec.push(Slot {
+                    value: UnsafeCell::new(MaybeUninit::uninit()),
+                    state: AtomicUsize::new(0),
+                });
+            }
+
+            let res = Box::<[Slot<T>; BLOCK_CAP]>::try_from(vec.into_boxed_slice());
+
+            match res {
+                Ok(boxed_array) => *boxed_array,
+                Err(_) => unreachable!(),
+            }
+        };
+
         Block {
             next: AtomicPtr::new(ptr::null_mut()),
-            slots: [Slot::UNINIT; BLOCK_CAP],
+            slots,
         }
     }
 
@@ -205,7 +229,7 @@ impl<T> Unbounded<T> {
 
                     // Write the value into the slot.
                     let slot = (*block).slots.get_unchecked(offset);
-                    slot.value.get().write(MaybeUninit::new(value));
+                    cell::write(&slot.value, MaybeUninit::new(value));
                     slot.state.fetch_or(WRITE, Ordering::Release);
                     return Ok(());
                 },
@@ -287,7 +311,7 @@ impl<T> Unbounded<T> {
                     // Read the value.
                     let slot = (*block).slots.get_unchecked(offset);
                     slot.wait_write();
-                    let value = slot.value.get().read().assume_init();
+                    let value = cell::read(&slot.value).assume_init();
 
                     // Destroy the block if we've reached the end, or if another thread wanted to
                     // destroy but couldn't because we were busy reading from the slot.
@@ -387,7 +411,7 @@ impl<T> Drop for Unbounded<T> {
                 if offset < BLOCK_CAP {
                     // Drop the value in the slot.
                     let slot = (*block).slots.get_unchecked(offset);
-                    let value = slot.value.get().read().assume_init();
+                    let value = cell::read(&slot.value).assume_init();
                     drop(value);
                 } else {
                     // Deallocate the block and move to the next one.

@@ -53,6 +53,16 @@ mod facade {
 
             #[cfg(not(feature = "loom"))]
             pub use std::sync::atomic::*;
+
+            pub fn load_unique(atomic: &mut AtomicUsize) -> usize {
+                #[cfg(feature = "loom")]
+                let v = unsafe { atomic.unsync_load() }; // SAFETY: we have &mut
+
+                #[cfg(not(feature = "loom"))]
+                let v = *atomic.get_mut();
+
+                v
+            }
         }
     }
 
@@ -61,6 +71,24 @@ mod facade {
         pub use loom::cell::*;
         #[cfg(not(feature = "loom"))]
         pub use std::cell::*;
+
+        pub unsafe fn write<T>(cell: &UnsafeCell<T>, value: T) {
+            #[cfg(feature = "loom")]
+            cell.with_mut(|ptr| ptr.write(value));
+
+            #[cfg(not(feature = "loom"))]
+            cell.get().write(value);
+        }
+
+        pub unsafe fn read<T>(cell: &UnsafeCell<T>) -> T {
+            #[cfg(feature = "loom")]
+            let v = cell.with(|ptr| ptr.read());
+
+            #[cfg(not(feature = "loom"))]
+            let v = cell.get().read();
+
+            v
+        }
     }
 
     pub mod thread {
