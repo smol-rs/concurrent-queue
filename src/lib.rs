@@ -39,11 +39,36 @@ use crate::bounded::Bounded;
 use crate::single::Single;
 use crate::unbounded::Unbounded;
 
+/// An internal facade abstracting over loom and std types
 mod facade {
-    #[cfg(feature = "loom")]
-    pub use loom::{sync, cell, thread};
-    #[cfg(not(feature = "loom"))]
-    pub use std::{sync, cell, thread};
+    pub mod sync {
+        #[cfg(feature = "loom")]
+        pub use loom::sync::*;
+        #[cfg(not(feature = "loom"))]
+        pub use std::sync::*;
+
+        pub mod atomic {
+            #[cfg(feature = "loom")]
+            pub use loom::sync::atomic::*;
+
+            #[cfg(not(feature = "loom"))]
+            pub use std::sync::atomic::*;
+        }
+    }
+
+    pub mod cell {
+        #[cfg(feature = "loom")]
+        pub use loom::cell::*;
+        #[cfg(not(feature = "loom"))]
+        pub use std::cell::*;
+    }
+
+    pub mod thread {
+        #[cfg(feature = "loom")]
+        pub use loom::thread::*;
+        #[cfg(not(feature = "loom"))]
+        pub use std::thread::*;
+    }
 }
 
 mod bounded;
