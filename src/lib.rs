@@ -33,11 +33,18 @@
 use std::error;
 use std::fmt;
 use std::panic::{RefUnwindSafe, UnwindSafe};
-use std::sync::atomic::{self, AtomicUsize, Ordering};
+use facade::sync::atomic::{self, AtomicUsize, Ordering};
 
 use crate::bounded::Bounded;
 use crate::single::Single;
 use crate::unbounded::Unbounded;
+
+mod facade {
+    #[cfg(feature = "loom")]
+    pub use loom::{sync, cell, thread};
+    #[cfg(not(feature = "loom"))]
+    pub use std::{sync, cell, thread};
+}
 
 mod bounded;
 mod single;

@@ -13,6 +13,7 @@ categories = ["concurrency"]
 readme = "README.md"
 
 [dependencies]
+loom = { version = "0.3", optional = true }
 cache-padded = "1.1.1"
 
 [dev-dependencies]

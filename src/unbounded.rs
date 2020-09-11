@@ -1,8 +1,8 @@
-use std::cell::UnsafeCell;
+use crate::facade::cell::UnsafeCell;
 use std::mem::MaybeUninit;
 use std::ptr;
-use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
-use std::thread;
+use crate::facade::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+use crate::facade::thread;
 
 use cache_padded::CachePadded;
 

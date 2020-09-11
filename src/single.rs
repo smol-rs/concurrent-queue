@@ -1,7 +1,7 @@
-use std::cell::UnsafeCell;
+use crate::facade::cell::UnsafeCell;
 use std::mem::MaybeUninit;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
+use crate::facade::sync::atomic::{AtomicUsize, Ordering};
+use crate::facade::thread;
 
 use crate::{PopError, PushError};
 
