@@ -37,7 +37,7 @@ struct Slot<T> {
 }
 
 impl<T> Slot<T> {
-    #[cfg(not(feature = "loom"))]
+    #[cfg(not(loom))]
     const UNINIT: Slot<T> = Slot {
         value: UnsafeCell::new(MaybeUninit::uninit()),
         state: AtomicUsize::new(0),
@@ -65,10 +65,10 @@ struct Block<T> {
 impl<T> Block<T> {
     /// Creates an empty block.
     fn new() -> Block<T> {
-        #[cfg(not(feature = "loom"))]
+        #[cfg(not(loom))]
         let slots = [Slot::UNINIT; BLOCK_CAP];
 
-        #[cfg(feature = "loom")]
+        #[cfg(loom)]
         let slots = {
             use std::convert::TryFrom;
 
