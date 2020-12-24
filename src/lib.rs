@@ -451,7 +451,7 @@ fn full_fence() {
         // a `SeqCst` fence.
         //
         // 1. `atomic::fence(SeqCst)`, which compiles into a `mfence` instruction.
-        // 2. `_.compare_and_swap(_, _, SeqCst)`, which compiles into a `lock cmpxchg` instruction.
+        // 2. `_.compare_exchange(_, _, SeqCst, SeqCst)`, which compiles into a `lock cmpxchg` instruction.
         //
         // Both instructions have the effect of a full barrier, but empirical benchmarks have shown
         // that the second one is sometimes a bit faster.
@@ -460,7 +460,7 @@ fn full_fence() {
         // temporary atomic variable and compare-and-exchanging its value. No sane compiler to
         // x86 platforms is going to optimize this away.
         let a = AtomicUsize::new(0);
-        a.compare_and_swap(0, 1, Ordering::SeqCst);
+        let _ = a.compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst);
     } else {
         atomic::fence(Ordering::SeqCst);
     }

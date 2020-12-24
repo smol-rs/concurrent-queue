@@ -172,8 +172,8 @@ impl<T> Unbounded<T> {
                 if self
                     .tail
                     .block
-                    .compare_and_swap(block, new, Ordering::Release)
-                    == block
+                    .compare_exchange(block, new, Ordering::Release, Ordering::Relaxed)
+                    .is_ok()
                 {
                     self.head.block.store(new, Ordering::Release);
                     block = new;
