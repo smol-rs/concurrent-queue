@@ -1,9 +1,9 @@
 # concurrent-queue
 
-[![Build](https://github.com/stjepang/concurrent-queue/workflows/Build%20and%20test/badge.svg)](
-https://github.com/stjepang/concurrent-queue/actions)
+[![Build](https://github.com/smol-rs/concurrent-queue/workflows/Build%20and%20test/badge.svg)](
+https://github.com/smol-rs/concurrent-queue/actions)
 [![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](
-https://github.com/stjepang/concurrent-queue)
+https://github.com/smol-rs/concurrent-queue)
 [![Cargo](https://img.shields.io/crates/v/concurrent-queue.svg)](
 https://crates.io/crates/concurrent-queue)
 [![Documentation](https://docs.rs/concurrent-queue/badge.svg)](
