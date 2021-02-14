@@ -10,7 +10,6 @@ homepage = "https://github.com/smol-rs/concurrent-queue"
 documentation = "https://docs.rs/concurrent-queue"
 keywords = ["channel", "mpmc", "spsc", "spmc", "mpsc"]
 categories = ["concurrency"]
-readme = "README.md"
 
 [dependencies]
 cache-padded = "1.1.1"
