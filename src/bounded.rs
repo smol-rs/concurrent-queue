@@ -106,7 +106,7 @@ impl<T> Bounded<T> {
                 } else {
                     // One lap forward, index wraps around to zero.
                     // Set to `{ lap: lap.wrapping_add(1), mark: 0, index: 0 }`.
-                    lap.wrapping_add(self.one_lap)
+                    lap.wrapping_add(self.one_lap) & !(self.one_lap - 1)
                 };
 
                 // Try moving the tail.
@@ -169,7 +169,7 @@ impl<T> Bounded<T> {
                 } else {
                     // One lap forward, index wraps around to zero.
                     // Set to `{ lap: lap.wrapping_add(1), mark: 0, index: 0 }`.
-                    lap.wrapping_add(self.one_lap)
+                    lap.wrapping_add(self.one_lap) & !(self.one_lap - 1)
                 };
 
                 // Try moving the head.
