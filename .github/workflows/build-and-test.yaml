@@ -41,3 +41,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+
+  miri:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        run: rustup toolchain install nightly --component miri && rustup default nightly
+      - run: cargo miri test
+        env:
+          MIRIFLAGS: -Zmiri-tag-raw-pointers
