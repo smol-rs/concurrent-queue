@@ -1,5 +1,8 @@
 [package]
 name = "concurrent-queue"
+# When publishing a new version:
+# - Update CHANGELOG.md
+# - Create "v1.x.y" git tag
 version = "1.2.2"
 authors = ["Stjepan Glavina <stjepang@gmail.com>"]
 edition = "2018"
