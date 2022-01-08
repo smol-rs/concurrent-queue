@@ -58,6 +58,7 @@ fn close() {
     assert_eq!(q.pop(), Err(PopError::Closed));
 }
 
+#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn spsc() {
     const COUNT: usize = 100_000;
@@ -84,6 +85,7 @@ fn spsc() {
         .run();
 }
 
+#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn mpmc() {
     const COUNT: usize = 25_000;
@@ -115,6 +117,7 @@ fn mpmc() {
     }
 }
 
+#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn drops() {
     const RUNS: usize = 100;
@@ -164,6 +167,9 @@ fn drops() {
 
 #[test]
 fn linearizable() {
+    #[cfg(miri)]
+    const COUNT: usize = 500;
+    #[cfg(not(miri))]
     const COUNT: usize = 25_000;
     const THREADS: usize = 4;
 

@@ -67,6 +67,7 @@ fn close() {
     assert_eq!(q.pop(), Err(PopError::Closed));
 }
 
+#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn spsc() {
     const COUNT: usize = 100_000;
@@ -93,6 +94,7 @@ fn spsc() {
         .run();
 }
 
+#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn mpmc() {
     const COUNT: usize = 25_000;
@@ -124,6 +126,7 @@ fn mpmc() {
     }
 }
 
+#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn drops() {
     static DROPS: AtomicUsize = AtomicUsize::new(0);
