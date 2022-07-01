@@ -194,18 +194,18 @@ impl<T> Unbounded<T> {
                 Ordering::SeqCst,
                 Ordering::Acquire,
             ) {
-                Ok(_) => unsafe {
+                Ok(_) => {
                     // If we've reached the end of the block, install the next one.
                     if offset + 1 == BLOCK_CAP {
                         let next_block = Box::into_raw(next_block.unwrap());
                         self.tail.block.store(next_block, Ordering::Release);
                         self.tail.index.fetch_add(1 << SHIFT, Ordering::Release);
-                        (*block).next.store(next_block, Ordering::Release);
+                        unsafe { (*block).next.store(next_block, Ordering::Release) };
                     }
 
                     // Write the value into the slot.
-                    let slot = (*block).slots.get_unchecked(offset);
-                    slot.value.get().write(MaybeUninit::new(value));
+                    let slot = unsafe { (*block).slots.get_unchecked(offset) };
+                    unsafe { slot.value.get().write(MaybeUninit::new(value)) };
                     slot.state.fetch_or(WRITE, Ordering::Release);
                     return Ok(());
                 },
@@ -379,20 +379,20 @@ impl<T> Drop for Unbounded<T> {
         head &= !((1 << SHIFT) - 1);
         tail &= !((1 << SHIFT) - 1);
 
-        unsafe {
+        
             // Drop all values between `head` and `tail` and deallocate the heap-allocated blocks.
             while head != tail {
                 let offset = (head >> SHIFT) % LAP;
 
                 if offset < BLOCK_CAP {
                     // Drop the value in the slot.
-                    let slot = (*block).slots.get_unchecked(offset);
-                    let value = slot.value.get().read().assume_init();
+                    let slot = unsafe {(*block).slots.get_unchecked(offset)};
+                    let value = unsafe {slot.value.get().read().assume_init()};
                     drop(value);
                 } else {
                     // Deallocate the block and move to the next one.
-                    let next = (*block).next.load(Ordering::Relaxed);
-                    drop(Box::from_raw(block));
+                    let next = unsafe {(*block).next.load(Ordering::Relaxed)};
+                    drop(unsafe {Box::from_raw(block)});
                     block = next;
                 }
 
@@ -401,8 +401,8 @@ impl<T> Drop for Unbounded<T> {
 
             // Deallocate the last remaining block.
             if !block.is_null() {
-                drop(Box::from_raw(block));
+                drop(unsafe {Box::from_raw(block)});
             }
-        }
+        
     }
 }
