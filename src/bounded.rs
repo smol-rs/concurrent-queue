@@ -297,10 +297,10 @@ impl<T> Drop for Bounded<T> {
 
             // Drop the value in the slot.
             let slot = &self.buffer[index];
-            unsafe {
-                let value = slot.value.get().read().assume_init();
+            
+                let value = unsafe { slot.value.get().read().assume_init() };
                 drop(value);
-            }
+            
         }
     }
 }
