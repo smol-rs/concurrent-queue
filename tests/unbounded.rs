@@ -1,3 +1,5 @@
+#![allow(clippy::bool_assert_comparison)]
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use concurrent_queue::{ConcurrentQueue, PopError, PushError};
