@@ -1,3 +1,7 @@
+# Version 1.2.3
+
+- Fix fence on non-x86 architectures and miri. (#16)
+
 # Version 1.2.2
 
 - Add a special, efficient `bounded(1)` implementation.
