@@ -237,7 +237,8 @@ impl<T> Unbounded<T> {
             let mut new_head = head + (1 << SHIFT);
 
             if new_head & MARK_BIT == 0 {
-                let tail = crate::full_fence_for_load(|| self.tail.index.load(Ordering::Relaxed));
+                crate::full_fence();
+                let tail = self.tail.index.load(Ordering::Relaxed);
 
                 // If the tail equals the head, that means the queue is empty.
                 if head >> SHIFT == tail >> SHIFT {
