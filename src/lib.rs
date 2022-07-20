@@ -445,11 +445,8 @@ impl<T> fmt::Display for PushError<T> {
 
 /// Equivalent to `atomic::fence(Ordering::SeqCst)`, but in some cases faster.
 #[inline]
-fn full_fence_for_load<T>(load_op: impl FnOnce() -> T) -> T {
-    if cfg!(all(
-        any(target_arch = "x86", target_arch = "x86_64"),
-        not(miri)
-    )) {
+fn full_fence() {
+    if cfg!(any(target_arch = "x86", target_arch = "x86_64")) {
         // HACK(stjepang): On x86 architectures there are two different ways of executing
         // a `SeqCst` fence.
         //
@@ -464,11 +461,7 @@ fn full_fence_for_load<T>(load_op: impl FnOnce() -> T) -> T {
         // x86 platforms is going to optimize this away.
         let a = AtomicUsize::new(0);
         let _ = a.compare_exchange(0, 1, Ordering::SeqCst, Ordering::SeqCst);
-        // On x86, `lock cmpxchg; mov` is fine. See also https://www.cl.cam.ac.uk/~pes20/cpp/cpp0xmappings.html.
-        load_op()
     } else {
-        let res = load_op();
         atomic::fence(Ordering::SeqCst);
-        res
     }
 }

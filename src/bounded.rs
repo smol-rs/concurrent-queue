@@ -129,7 +129,8 @@ impl<T> Bounded<T> {
                     }
                 }
             } else if stamp.wrapping_add(self.one_lap) == tail + 1 {
-                let head = crate::full_fence_for_load(|| self.head.load(Ordering::Relaxed));
+                crate::full_fence();
+                let head = self.head.load(Ordering::Relaxed);
 
                 // If the head lags one lap behind the tail as well...
                 if head.wrapping_add(self.one_lap) == tail {
@@ -190,7 +191,8 @@ impl<T> Bounded<T> {
                     }
                 }
             } else if stamp == head {
-                let tail = crate::full_fence_for_load(|| self.tail.load(Ordering::Relaxed));
+                crate::full_fence();
+                let tail = self.tail.load(Ordering::Relaxed);
 
                 // If the tail equals the head, that means the queue is empty.
                 if (tail & !self.mark_bit) == head {
