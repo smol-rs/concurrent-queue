@@ -312,8 +312,8 @@ impl<T> Drop for Bounded<T> {
             // Drop the value in the slot.
             let slot = &self.buffer[index];
             unsafe {
-                let value = slot.value.get().read().assume_init();
-                drop(value);
+                let value = &mut *slot.value.get();
+                value.as_mut_ptr().drop_in_place();
             }
         }
     }

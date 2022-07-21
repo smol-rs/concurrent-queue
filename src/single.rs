@@ -120,8 +120,10 @@ impl<T> Drop for Single<T> {
     fn drop(&mut self) {
         // Drop the value in the slot.
         if *self.state.get_mut() & PUSHED != 0 {
-            let value = unsafe { self.slot.get().read().assume_init() };
-            drop(value);
+            unsafe {
+                let value = &mut *self.slot.get();
+                value.as_mut_ptr().drop_in_place();
+            }
         }
     }
 }
