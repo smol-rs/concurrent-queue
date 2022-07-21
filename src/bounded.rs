@@ -284,10 +284,24 @@ impl<T> Bounded<T> {
 impl<T> Drop for Bounded<T> {
     fn drop(&mut self) {
         // Get the index of the head.
-        let hix = self.head.load(Ordering::Relaxed) & (self.mark_bit - 1);
+        let head = *self.head.get_mut();
+        let tail = *self.tail.get_mut();
+
+        let hix = head & (self.mark_bit - 1);
+        let tix = tail & (self.mark_bit - 1);
+
+        let len = if hix < tix {
+            tix - hix
+        } else if hix > tix {
+            self.buffer.len() - hix + tix
+        } else if (tail & !self.mark_bit) == head {
+            0
+        } else {
+            self.buffer.len()
+        };
 
         // Loop over all slots that hold a value and drop them.
-        for i in 0..self.len() {
+        for i in 0..len {
             // Compute the index of the next slot holding a value.
             let index = if hix + i < self.buffer.len() {
                 hix + i
