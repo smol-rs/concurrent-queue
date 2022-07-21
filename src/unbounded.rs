@@ -387,8 +387,8 @@ impl<T> Drop for Unbounded<T> {
                 if offset < BLOCK_CAP {
                     // Drop the value in the slot.
                     let slot = (*block).slots.get_unchecked(offset);
-                    let value = slot.value.get().read().assume_init();
-                    drop(value);
+                    let value = &mut *slot.value.get();
+                    value.as_mut_ptr().drop_in_place();
                 } else {
                     // Deallocate the block and move to the next one.
                     let next = *(*block).next.get_mut();
