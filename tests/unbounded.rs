@@ -69,10 +69,9 @@ fn close() {
     assert_eq!(q.pop(), Err(PopError::Closed));
 }
 
-#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn spsc() {
-    const COUNT: usize = 100_000;
+    const COUNT: usize = if cfg!(miri) { 100 } else { 100_000 };
 
     let q = ConcurrentQueue::unbounded();
 
@@ -96,10 +95,9 @@ fn spsc() {
         .run();
 }
 
-#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn mpmc() {
-    const COUNT: usize = 25_000;
+    const COUNT: usize = if cfg!(miri) { 100 } else { 25_000 };
     const THREADS: usize = 4;
 
     let q = ConcurrentQueue::<usize>::unbounded();
@@ -128,9 +126,11 @@ fn mpmc() {
     }
 }
 
-#[cfg_attr(miri, ignore)] // Miri is too slow
 #[test]
 fn drops() {
+    const RUNS: usize = if cfg!(miri) { 20 } else { 100 };
+    const STEPS: usize = if cfg!(miri) { 100 } else { 10_000 };
+
     static DROPS: AtomicUsize = AtomicUsize::new(0);
 
     #[derive(Debug, PartialEq)]
@@ -142,8 +142,8 @@ fn drops() {
         }
     }
 
-    for _ in 0..100 {
-        let steps = fastrand::usize(0..10_000);
+    for _ in 0..RUNS {
+        let steps = fastrand::usize(0..STEPS);
         let additional = fastrand::usize(0..1000);
 
         DROPS.store(0, Ordering::SeqCst);
