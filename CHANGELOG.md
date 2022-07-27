@@ -1,4 +1,11 @@
+# Version 1.2.4
+
+- Fix fence on x86 and miri. (#18)
+- Revert 1.2.3. (#18)
+
 # Version 1.2.3
+
+**Note:** This release has been yanked, see #17 for details.
 
 - Fix fence on non-x86 architectures and miri. (#16)
 
