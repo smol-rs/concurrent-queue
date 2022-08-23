@@ -24,16 +24,32 @@
 //! assert_eq!(q.pop(), Ok(2));
 //! ```
 //!
+//! # Features
+//!
+//! `concurrent-queue` used an `std` default feature. With this feature enabled, this crate will
+//! use [`std::thread::yield_now`] to avoid busy waiting in tight loops. However, with this
+//! feature disabled, [`core::hint::spin_loop`] will be used instead. Disabling `std` will allow
+//! this crate to be used on `no_std` platforms at the potential expense of more busy waiting.
+//!
 //! [Bounded]: `ConcurrentQueue::bounded()`
 //! [Unbounded]: `ConcurrentQueue::unbounded()`
 //! [closed]: `ConcurrentQueue::close()`
 
 #![warn(missing_docs, missing_debug_implementations, rust_2018_idioms)]
+#![no_std]
 
+extern crate alloc;
+#[cfg(feature = "std")]
+extern crate std;
+
+use alloc::boxed::Box;
+use core::fmt;
+use core::sync::atomic::{self, AtomicUsize, Ordering};
+
+#[cfg(feature = "std")]
 use std::error;
-use std::fmt;
+#[cfg(feature = "std")]
 use std::panic::{RefUnwindSafe, UnwindSafe};
-use std::sync::atomic::{self, AtomicUsize, Ordering};
 
 use crate::bounded::Bounded;
 use crate::single::Single;
@@ -65,7 +81,9 @@ pub struct ConcurrentQueue<T>(Inner<T>);
 unsafe impl<T: Send> Send for ConcurrentQueue<T> {}
 unsafe impl<T: Send> Sync for ConcurrentQueue<T> {}
 
+#[cfg(feature = "std")]
 impl<T> UnwindSafe for ConcurrentQueue<T> {}
+#[cfg(feature = "std")]
 impl<T> RefUnwindSafe for ConcurrentQueue<T> {}
 
 enum Inner<T> {
@@ -367,6 +385,7 @@ impl PopError {
     }
 }
 
+#[cfg(feature = "std")]
 impl error::Error for PopError {}
 
 impl fmt::Debug for PopError {
@@ -423,6 +442,7 @@ impl<T> PushError<T> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<T: fmt::Debug> error::Error for PushError<T> {}
 
 impl<T: fmt::Debug> fmt::Debug for PushError<T> {
@@ -441,6 +461,15 @@ impl<T> fmt::Display for PushError<T> {
             PushError::Closed(_) => write!(f, "Closed"),
         }
     }
+}
+
+/// Notify the CPU that we are currently busy-waiting.
+#[inline]
+fn busy_wait() {
+    #[cfg(feature = "std")]
+    std::thread::yield_now();
+    #[cfg(all(not(feature = "std"), not(cq_no_spin_loop)))]
+    core::hint::spin_loop();
 }
 
 /// Equivalent to `atomic::fence(Ordering::SeqCst)`, but in some cases faster.
