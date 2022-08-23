@@ -468,7 +468,6 @@ impl<T> fmt::Display for PushError<T> {
 fn busy_wait() {
     #[cfg(feature = "std")]
     std::thread::yield_now();
-
     // Use the deprecated `spin_loop_hint` here in order to
     // avoid bumping the MSRV.
     #[allow(deprecated)]
