@@ -468,8 +468,12 @@ impl<T> fmt::Display for PushError<T> {
 fn busy_wait() {
     #[cfg(feature = "std")]
     std::thread::yield_now();
-    #[cfg(all(not(feature = "std"), not(cq_no_spin_loop)))]
-    core::hint::spin_loop();
+
+    // Use the deprecated `spin_loop_hint` here in order to
+    // avoid bumping the MSRV.
+    #[allow(deprecated)]
+    #[cfg(not(feature = "std"))]
+    core::sync::atomic::spin_loop_hint()
 }
 
 /// Equivalent to `atomic::fence(Ordering::SeqCst)`, but in some cases faster.
