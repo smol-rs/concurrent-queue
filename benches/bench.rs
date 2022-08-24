@@ -1,10 +1,7 @@
-use std::{
-    any::type_name,
-    fmt::Debug,
-};
+use std::{any::type_name, fmt::Debug};
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use concurrent_queue::{ConcurrentQueue, PopError};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use easy_parallel::Parallel;
 
 const COUNT: usize = 100_000;
@@ -12,13 +9,11 @@ const THREADS: usize = 7;
 
 fn spsc<T: Default + std::fmt::Debug + Send>(recv: &ConcurrentQueue<T>, send: &ConcurrentQueue<T>) {
     Parallel::new()
-        .add(|| {
-            loop {
-                match recv.pop() {
-                    Ok(_) => (),
-                    Err(PopError::Empty) => (),
-                    Err(PopError::Closed) => break,
-                }
+        .add(|| loop {
+            match recv.pop() {
+                Ok(_) => (),
+                Err(PopError::Empty) => (),
+                Err(PopError::Closed) => break,
             }
         })
         .add(|| {
@@ -33,7 +28,7 @@ fn spsc<T: Default + std::fmt::Debug + Send>(recv: &ConcurrentQueue<T>, send: &C
 fn mpsc<T: Default + std::fmt::Debug + Send>(recv: &ConcurrentQueue<T>, send: &ConcurrentQueue<T>) {
     Parallel::new()
         .each(0..THREADS, |_| {
-            for _ in 0.. COUNT {
+            for _ in 0..COUNT {
                 send.push(T::default()).unwrap();
             }
         })
@@ -43,18 +38,21 @@ fn mpsc<T: Default + std::fmt::Debug + Send>(recv: &ConcurrentQueue<T>, send: &C
                 match recv.pop() {
                     Ok(_) => recieved += 1,
                     Err(PopError::Empty) => (),
-                    Err(PopError::Closed) => unreachable!()
+                    Err(PopError::Closed) => unreachable!(),
                 }
             }
         })
         .run();
 }
 
-fn single_thread<T: Default + std::fmt::Debug>(recv: &ConcurrentQueue<T>, send: &ConcurrentQueue<T>) {
-    for _ in 0.. COUNT {
+fn single_thread<T: Default + std::fmt::Debug>(
+    recv: &ConcurrentQueue<T>,
+    send: &ConcurrentQueue<T>,
+) {
+    for _ in 0..COUNT {
         send.push(T::default()).unwrap();
     }
-    for _ in 0.. COUNT {
+    for _ in 0..COUNT {
         recv.pop().unwrap();
     }
 }
