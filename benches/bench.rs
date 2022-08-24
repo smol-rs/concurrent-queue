@@ -68,6 +68,13 @@ macro_rules! bench_all(
                     let q = ConcurrentQueue::unbounded();
                     $f::<T>(black_box(&q), black_box(&q));
                 }));
+
+                let name = format!("bounded_{}_{}", stringify!($f), type_name::<T>());
+
+                c.bench_function(&name, |b| b.iter(|| {
+                    let q = ConcurrentQueue::bounded(THREADS * COUNT);
+                    $f::<T>(black_box(&q), black_box(&q));
+                }));
             }
             helper::<u8>(c);
             helper::<u16>(c);
