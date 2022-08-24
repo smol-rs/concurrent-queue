@@ -1,9 +1,8 @@
-use std::cell::UnsafeCell;
-use std::mem::MaybeUninit;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
+use core::cell::UnsafeCell;
+use core::mem::MaybeUninit;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::{PopError, PushError};
+use crate::{busy_wait, PopError, PushError};
 
 const LOCKED: usize = 1 << 0;
 const PUSHED: usize = 1 << 1;
@@ -77,7 +76,7 @@ impl<T> Single<T> {
             if prev & LOCKED == 0 {
                 state = prev;
             } else {
-                thread::yield_now();
+                busy_wait();
                 state = prev & !LOCKED;
             }
         }

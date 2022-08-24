@@ -1,11 +1,11 @@
-use std::cell::UnsafeCell;
-use std::mem::MaybeUninit;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::thread;
+use alloc::{boxed::Box, vec::Vec};
+use core::cell::UnsafeCell;
+use core::mem::MaybeUninit;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use cache_padded::CachePadded;
 
-use crate::{PopError, PushError};
+use crate::{busy_wait, PopError, PushError};
 
 /// A slot in a queue.
 struct Slot<T> {
@@ -141,7 +141,7 @@ impl<T> Bounded<T> {
                 tail = self.tail.load(Ordering::Relaxed);
             } else {
                 // Yield because we need to wait for the stamp to get updated.
-                thread::yield_now();
+                busy_wait();
                 tail = self.tail.load(Ordering::Relaxed);
             }
         }
@@ -207,7 +207,7 @@ impl<T> Bounded<T> {
                 head = self.head.load(Ordering::Relaxed);
             } else {
                 // Yield because we need to wait for the stamp to get updated.
-                thread::yield_now();
+                busy_wait();
                 head = self.head.load(Ordering::Relaxed);
             }
         }

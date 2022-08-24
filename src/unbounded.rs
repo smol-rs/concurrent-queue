@@ -1,12 +1,12 @@
-use std::cell::UnsafeCell;
-use std::mem::MaybeUninit;
-use std::ptr;
-use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
-use std::thread;
+use alloc::boxed::Box;
+use core::cell::UnsafeCell;
+use core::mem::MaybeUninit;
+use core::ptr;
+use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 use cache_padded::CachePadded;
 
-use crate::{PopError, PushError};
+use crate::{busy_wait, PopError, PushError};
 
 // Bits indicating the state of a slot:
 // * If a value has been written into the slot, `WRITE` is set.
@@ -45,7 +45,7 @@ impl<T> Slot<T> {
     /// Waits until a value is written into the slot.
     fn wait_write(&self) {
         while self.state.load(Ordering::Acquire) & WRITE == 0 {
-            thread::yield_now();
+            busy_wait();
         }
     }
 }
@@ -77,7 +77,7 @@ impl<T> Block<T> {
             if !next.is_null() {
                 return next;
             }
-            thread::yield_now();
+            busy_wait();
         }
     }
 
@@ -152,7 +152,7 @@ impl<T> Unbounded<T> {
 
             // If we reached the end of the block, wait until the next one is installed.
             if offset == BLOCK_CAP {
-                thread::yield_now();
+                busy_wait();
                 tail = self.tail.index.load(Ordering::Acquire);
                 block = self.tail.block.load(Ordering::Acquire);
                 continue;
@@ -228,7 +228,7 @@ impl<T> Unbounded<T> {
 
             // If we reached the end of the block, wait until the next one is installed.
             if offset == BLOCK_CAP {
-                thread::yield_now();
+                busy_wait();
                 head = self.head.index.load(Ordering::Acquire);
                 block = self.head.block.load(Ordering::Acquire);
                 continue;
@@ -258,7 +258,7 @@ impl<T> Unbounded<T> {
 
             // The block can be null here only if the first push operation is in progress.
             if block.is_null() {
-                thread::yield_now();
+                busy_wait();
                 head = self.head.index.load(Ordering::Acquire);
                 block = self.head.block.load(Ordering::Acquire);
                 continue;
