@@ -3,7 +3,7 @@ use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use cache_padded::CachePadded;
+use crossbeam_utils::CachePadded;
 
 use crate::{busy_wait, PopError, PushError};
 

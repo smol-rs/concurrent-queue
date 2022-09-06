@@ -18,7 +18,7 @@ exclude = ["/.*"]
 bench = false
 
 [dependencies]
-cache-padded = "1.1.1"
+crossbeam-utils = { version = "0.8.11", default-features = false }
 
 [[bench]]
 name = "bench"
