@@ -4,7 +4,7 @@ use core::mem::MaybeUninit;
 use core::ptr;
 use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
-use cache_padded::CachePadded;
+use crossbeam_utils::CachePadded;
 
 use crate::{busy_wait, PopError, PushError};
 
