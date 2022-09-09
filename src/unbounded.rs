@@ -1,11 +1,13 @@
 use alloc::boxed::Box;
-use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
 use core::ptr;
-use core::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 
 use crossbeam_utils::CachePadded;
 
+use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+use crate::sync::cell::UnsafeCell;
+#[allow(unused_imports)]
+use crate::sync::prelude::*;
 use crate::{busy_wait, PopError, PushError};
 
 // Bits indicating the state of a slot:
@@ -37,10 +39,24 @@ struct Slot<T> {
 }
 
 impl<T> Slot<T> {
+    #[cfg(not(loom))]
     const UNINIT: Slot<T> = Slot {
         value: UnsafeCell::new(MaybeUninit::uninit()),
         state: AtomicUsize::new(0),
     };
+
+    #[cfg(not(loom))]
+    fn uninit_block() -> [Slot<T>; BLOCK_CAP] {
+        [Self::UNINIT; BLOCK_CAP]
+    }
+
+    #[cfg(loom)]
+    fn uninit_block() -> [Slot<T>; BLOCK_CAP] {
+        // SAFETY: Behavior is well-defined when all items are zero:
+        // - MaybeUninit can have any bit pattern
+        // - AtomicUsize is transparent to usize, and it is intended to be zero here
+        unsafe { MaybeUninit::zeroed().assume_init() }
+    }
 
     /// Waits until a value is written into the slot.
     fn wait_write(&self) {
@@ -66,7 +82,7 @@ impl<T> Block<T> {
     fn new() -> Block<T> {
         Block {
             next: AtomicPtr::new(ptr::null_mut()),
-            slots: [Slot::UNINIT; BLOCK_CAP],
+            slots: Slot::uninit_block(),
         }
     }
 
@@ -205,7 +221,9 @@ impl<T> Unbounded<T> {
 
                     // Write the value into the slot.
                     let slot = (*block).slots.get_unchecked(offset);
-                    slot.value.get().write(MaybeUninit::new(value));
+                    slot.value.with_mut(|slot| {
+                        slot.write(MaybeUninit::new(value));
+                    });
                     slot.state.fetch_or(WRITE, Ordering::Release);
                     return Ok(());
                 },
@@ -287,7 +305,7 @@ impl<T> Unbounded<T> {
                     // Read the value.
                     let slot = (*block).slots.get_unchecked(offset);
                     slot.wait_write();
-                    let value = slot.value.get().read().assume_init();
+                    let value = slot.value.with_mut(|slot| slot.read().assume_init());
 
                     // Destroy the block if we've reached the end, or if another thread wanted to
                     // destroy but couldn't because we were busy reading from the slot.
@@ -371,38 +389,49 @@ impl<T> Unbounded<T> {
 
 impl<T> Drop for Unbounded<T> {
     fn drop(&mut self) {
-        let mut head = *self.head.index.get_mut();
-        let mut tail = *self.tail.index.get_mut();
-        let mut block = *self.head.block.get_mut();
+        let Self { head, tail } = self;
+        let Position { index: head, block } = &mut **head;
 
-        // Erase the lower bits.
-        head &= !((1 << SHIFT) - 1);
-        tail &= !((1 << SHIFT) - 1);
+        head.with_mut(|&mut mut head| {
+            tail.index.with_mut(|&mut mut tail| {
+                // Erase the lower bits.
+                head &= !((1 << SHIFT) - 1);
+                tail &= !((1 << SHIFT) - 1);
 
-        unsafe {
-            // Drop all values between `head` and `tail` and deallocate the heap-allocated blocks.
-            while head != tail {
-                let offset = (head >> SHIFT) % LAP;
+                unsafe {
+                    // Drop all values between `head` and `tail` and deallocate the heap-allocated blocks.
+                    while head != tail {
+                        let offset = (head >> SHIFT) % LAP;
 
-                if offset < BLOCK_CAP {
-                    // Drop the value in the slot.
-                    let slot = (*block).slots.get_unchecked(offset);
-                    let value = &mut *slot.value.get();
-                    value.as_mut_ptr().drop_in_place();
-                } else {
-                    // Deallocate the block and move to the next one.
-                    let next = *(*block).next.get_mut();
-                    drop(Box::from_raw(block));
-                    block = next;
+                        if offset < BLOCK_CAP {
+                            // Drop the value in the slot.
+                            block.with_mut(|block| {
+                                let slot = (**block).slots.get_unchecked(offset);
+                                slot.value.with_mut(|slot| {
+                                    let value = &mut *slot;
+                                    value.as_mut_ptr().drop_in_place();
+                                });
+                            });
+                        } else {
+                            // Deallocate the block and move to the next one.
+                            block.with_mut(|block| {
+                                let next_block = (**block).next.with_mut(|next| *next);
+                                drop(Box::from_raw(*block));
+                                *block = next_block;
+                            });
+                        }
+
+                        head = head.wrapping_add(1 << SHIFT);
+                    }
+
+                    // Deallocate the last remaining block.
+                    block.with_mut(|block| {
+                        if !block.is_null() {
+                            drop(Box::from_raw(*block));
+                        }
+                    });
                 }
-
-                head = head.wrapping_add(1 << SHIFT);
-            }
-
-            // Deallocate the last remaining block.
-            if !block.is_null() {
-                drop(Box::from_raw(block));
-            }
-        }
+            });
+        });
     }
 }

@@ -44,7 +44,7 @@ extern crate std;
 
 use alloc::boxed::Box;
 use core::fmt;
-use core::sync::atomic::{self, AtomicUsize, Ordering};
+use sync::atomic::{self, AtomicUsize, Ordering};
 
 #[cfg(feature = "std")]
 use std::error;
@@ -58,6 +58,8 @@ use crate::unbounded::Unbounded;
 mod bounded;
 mod single;
 mod unbounded;
+
+mod sync;
 
 /// A concurrent queue.
 ///

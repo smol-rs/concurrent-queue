@@ -1,7 +1,9 @@
-use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
-use core::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::cell::UnsafeCell;
+#[allow(unused_imports)]
+use crate::sync::prelude::*;
 use crate::{busy_wait, PopError, PushError};
 
 const LOCKED: usize = 1 << 0;
@@ -33,7 +35,9 @@ impl<T> Single<T> {
 
         if state == 0 {
             // Write the value and unlock.
-            unsafe { self.slot.get().write(MaybeUninit::new(value)) }
+            self.slot.with_mut(|slot| unsafe {
+                slot.write(MaybeUninit::new(value));
+            });
             self.state.fetch_and(!LOCKED, Ordering::Release);
             Ok(())
         } else if state & CLOSED != 0 {
@@ -60,7 +64,9 @@ impl<T> Single<T> {
 
             if prev == state {
                 // Read the value and unlock.
-                let value = unsafe { self.slot.get().read().assume_init() };
+                let value = self
+                    .slot
+                    .with_mut(|slot| unsafe { slot.read().assume_init() });
                 self.state.fetch_and(!LOCKED, Ordering::Release);
                 return Ok(value);
             }
@@ -118,11 +124,14 @@ impl<T> Single<T> {
 impl<T> Drop for Single<T> {
     fn drop(&mut self) {
         // Drop the value in the slot.
-        if *self.state.get_mut() & PUSHED != 0 {
-            unsafe {
-                let value = &mut *self.slot.get();
-                value.as_mut_ptr().drop_in_place();
+        let Self { state, slot } = self;
+        state.with_mut(|state| {
+            if *state & PUSHED != 0 {
+                slot.with_mut(|slot| unsafe {
+                    let value = &mut *slot;
+                    value.as_mut_ptr().drop_in_place();
+                });
             }
-        }
+        });
     }
 }

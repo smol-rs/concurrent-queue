@@ -20,6 +20,9 @@ bench = false
 [dependencies]
 crossbeam-utils = { version = "0.8.11", default-features = false }
 
+[target.'cfg(loom)'.dependencies]
+loom = "0.5"
+
 [[bench]]
 name = "bench"
 harness = false
