@@ -468,13 +468,19 @@ impl<T> fmt::Display for PushError<T> {
 /// Notify the CPU that we are currently busy-waiting.
 #[inline]
 fn busy_wait() {
-    #[cfg(feature = "std")]
-    std::thread::yield_now();
-    // Use the deprecated `spin_loop_hint` here in order to
-    // avoid bumping the MSRV.
-    #[allow(deprecated)]
-    #[cfg(not(feature = "std"))]
-    core::sync::atomic::spin_loop_hint()
+    cfg_if::cfg_if! {
+        if #[cfg(loom)] {
+            loom::thread::yield_now();
+        } else if #[cfg(feature = "std")] {
+            std::thread::yield_now();
+        } else {
+            // Use the deprecated `spin_loop_hint` here in order to
+            // avoid bumping the MSRV.
+            #[allow(deprecated)]
+            #[cfg(not(feature = "std"))]
+            core::sync::atomic::spin_loop_hint()
+        }
+    }
 }
 
 /// Equivalent to `atomic::fence(Ordering::SeqCst)`, but in some cases faster.

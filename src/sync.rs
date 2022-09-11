@@ -1,13 +1,35 @@
 //! Synchronization facade to choose between `core` primitives and `loom` primitives.
 
-#[cfg(not(loom))]
+#[cfg(all(feature = "portable-atomic", not(loom)))]
 mod sync_impl {
-    pub(crate) mod prelude {
-        pub(crate) use super::{AtomicExt, UnsafeCellExt};
-    }
+    pub(crate) use core::cell;
+    pub(crate) use portable_atomic as atomic;
+}
 
+#[cfg(all(not(feature = "portable-atomic"), not(loom)))]
+mod sync_impl {
     pub(crate) use core::cell;
     pub(crate) use core::sync::atomic;
+}
+
+#[cfg(loom)]
+mod sync_impl {
+    pub(crate) use loom::cell;
+
+    pub(crate) mod atomic {
+        pub(crate) use core::sync::atomic::compiler_fence;
+        pub(crate) use loom::sync::atomic::*;
+    }
+}
+
+pub(crate) use sync_impl::*;
+
+#[cfg(loom)]
+pub(crate) mod prelude {}
+
+#[cfg(not(loom))]
+pub(crate) mod prelude {
+    use super::{atomic, cell};
 
     /// Emulate `loom::UnsafeCell`'s API.
     pub(crate) trait UnsafeCellExt {
@@ -71,16 +93,3 @@ mod sync_impl {
         }
     }
 }
-
-#[cfg(loom)]
-mod sync_impl {
-    pub(crate) mod prelude {}
-    pub(crate) use loom::cell;
-
-    pub(crate) mod atomic {
-        pub(crate) use core::sync::atomic::compiler_fence;
-        pub(crate) use loom::sync::atomic::*;
-    }
-}
-
-pub(crate) use sync_impl::*;

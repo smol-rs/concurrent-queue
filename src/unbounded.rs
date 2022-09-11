@@ -52,10 +52,21 @@ impl<T> Slot<T> {
 
     #[cfg(loom)]
     fn uninit_block() -> [Slot<T>; BLOCK_CAP] {
-        // SAFETY: Behavior is well-defined when all items are zero:
-        // - MaybeUninit can have any bit pattern
-        // - AtomicUsize is transparent to usize, and it is intended to be zero here
-        unsafe { MaybeUninit::zeroed().assume_init() }
+        // Repeat this expression 31 times.
+        // Update if we change BLOCK_CAP
+        macro_rules! repeat_31 {
+            ($e: expr) => {
+                [
+                    $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e,
+                    $e, $e, $e, $e, $e, $e, $e, $e, $e, $e, $e,
+                ]
+            };
+        }
+
+        repeat_31!(Slot {
+            value: UnsafeCell::new(MaybeUninit::uninit()),
+            state: AtomicUsize::new(0),
+        })
     }
 
     /// Waits until a value is written into the slot.
