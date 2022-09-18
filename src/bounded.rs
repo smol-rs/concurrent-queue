@@ -140,6 +140,10 @@ impl<T> Bounded<T> {
                     return Err(PushError::Full(value));
                 }
 
+                // Loom complains if there isn't an explicit busy wait here.
+                #[cfg(loom)]
+                busy_wait();
+
                 tail = self.tail.load(Ordering::Relaxed);
             } else {
                 // Yield because we need to wait for the stamp to get updated.
@@ -207,6 +211,10 @@ impl<T> Bounded<T> {
                         return Err(PopError::Empty);
                     }
                 }
+
+                // Loom complains if there isn't a busy-wait here.
+                #[cfg(loom)]
+                busy_wait();
 
                 head = self.head.load(Ordering::Relaxed);
             } else {

@@ -488,7 +488,8 @@ fn busy_wait() {
 fn full_fence() {
     if cfg!(all(
         any(target_arch = "x86", target_arch = "x86_64"),
-        not(miri)
+        not(miri),
+        not(loom)
     )) {
         // HACK(stjepang): On x86 architectures there are two different ways of executing
         // a `SeqCst` fence.

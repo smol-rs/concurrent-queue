@@ -36,6 +36,7 @@ jobs:
         run: cargo check
         env:
           RUSTFLAGS: ${{ env.RUSTFLAGS }} --cfg loom
+          LOOM_MAX_PREEMPTIONS: 2
       - run: rustup target add thumbv7m-none-eabi
       - run: cargo hack build --target thumbv7m-none-eabi --no-default-features --no-dev-deps
 
