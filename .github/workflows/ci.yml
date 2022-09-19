@@ -33,7 +33,7 @@ jobs:
       - name: Install cargo-hack
         uses: taiki-e/install-action@cargo-hack
       - name: Run with Loom enabled
-        run: cargo check
+        run: cargo test --test loom --features loom
         env:
           RUSTFLAGS: ${{ env.RUSTFLAGS }} --cfg loom
           LOOM_MAX_PREEMPTIONS: 2

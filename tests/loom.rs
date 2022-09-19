@@ -4,7 +4,6 @@ use concurrent_queue::{ConcurrentQueue, PopError, PushError};
 use loom::sync::atomic::{AtomicUsize, Ordering};
 use loom::sync::{Arc, Condvar, Mutex};
 use loom::thread;
-use std::iter;
 
 /// A basic MPMC channel based on a ConcurrentQueue and loom primitives.
 struct Channel<T> {
