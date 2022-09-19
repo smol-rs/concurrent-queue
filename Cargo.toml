@@ -18,7 +18,6 @@ exclude = ["/.*"]
 bench = false
 
 [dependencies]
-cfg-if = "1"
 crossbeam-utils = { version = "0.8.11", default-features = false }
 portable-atomic = { version = "0.3", default-features = false, optional = true }
 
