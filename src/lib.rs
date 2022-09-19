@@ -30,12 +30,12 @@
 //! use [`std::thread::yield_now`] to avoid busy waiting in tight loops. However, with this
 //! feature disabled, [`core::hint::spin_loop`] will be used instead. Disabling `std` will allow
 //! this crate to be used on `no_std` platforms at the potential expense of more busy waiting.
-//! 
-//! There is also a `portable-atomic` feature, which uses a polyfill from the 
+//!
+//! There is also a `portable-atomic` feature, which uses a polyfill from the
 //! [`portable-atomic`] crate to provide atomic operations on platforms that do not support them.
 //! See the [`README`] for the [`portable-atomic`] crate for more information on how to use it on
 //! single-threaded targets. Note that even with this feature enabled, `concurrent-queue` still
-//! requires a global allocator to be available. See the documentation for the 
+//! requires a global allocator to be available. See the documentation for the
 //! [`std::alloc::GlobalAlloc`] trait for more information.
 //!
 //! [Bounded]: `ConcurrentQueue::bounded()`
@@ -62,8 +62,8 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use crate::bounded::Bounded;
 use crate::single::Single;
-use crate::unbounded::Unbounded;
 use crate::sync::busy_wait;
+use crate::unbounded::Unbounded;
 
 mod bounded;
 mod single;

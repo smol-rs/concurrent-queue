@@ -16,7 +16,7 @@ mod sync_impl {
 mod sync_impl {
     pub(crate) use core::cell;
     pub(crate) use core::sync::atomic;
-     
+
     #[cfg(not(feature = "std"))]
     #[inline]
     pub(crate) fn spin_loop() {
