@@ -29,7 +29,8 @@
 //! `concurrent-queue` used an `std` default feature. With this feature enabled, this crate will
 //! use [`std::thread::yield_now`] to avoid busy waiting in tight loops. However, with this
 //! feature disabled, [`core::hint::spin_loop`] will be used instead. Disabling `std` will allow
-//! this crate to be used on `no_std` platforms at the potential expense of more busy waiting.
+//! this crate to be used on `no_std` platforms at the potential expense of more busy waiting. 
+//! However, this feature has no effect on Rust versions prior to 1.56.
 //!
 //! [Bounded]: `ConcurrentQueue::bounded()`
 //! [Unbounded]: `ConcurrentQueue::unbounded()`
@@ -39,7 +40,8 @@
 #![no_std]
 
 extern crate alloc;
-#[cfg(feature = "std")]
+
+#[cfg(any(feature = "std", concurrent_queue_no_unwind_in_core))]
 extern crate std;
 
 use alloc::boxed::Box;
@@ -48,7 +50,10 @@ use core::sync::atomic::{self, AtomicUsize, Ordering};
 
 #[cfg(feature = "std")]
 use std::error;
-#[cfg(feature = "std")]
+
+#[cfg(not(concurrent_queue_no_unwind_in_core))]
+use core::panic::{RefUnwindSafe, UnwindSafe};
+#[cfg(concurrent_queue_no_unwind_in_core)]
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use crate::bounded::Bounded;
@@ -81,9 +86,7 @@ pub struct ConcurrentQueue<T>(Inner<T>);
 unsafe impl<T: Send> Send for ConcurrentQueue<T> {}
 unsafe impl<T: Send> Sync for ConcurrentQueue<T> {}
 
-#[cfg(feature = "std")]
 impl<T> UnwindSafe for ConcurrentQueue<T> {}
-#[cfg(feature = "std")]
 impl<T> RefUnwindSafe for ConcurrentQueue<T> {}
 
 enum Inner<T> {
@@ -466,12 +469,12 @@ impl<T> fmt::Display for PushError<T> {
 /// Notify the CPU that we are currently busy-waiting.
 #[inline]
 fn busy_wait() {
-    #[cfg(feature = "std")]
+    #[cfg(any(feature = "std", concurrent_queue_no_unwind_in_core))]
     std::thread::yield_now();
     // Use the deprecated `spin_loop_hint` here in order to
     // avoid bumping the MSRV.
     #[allow(deprecated)]
-    #[cfg(not(feature = "std"))]
+    #[cfg(not(any(feature = "std", concurrent_queue_no_unwind_in_core)))]
     core::sync::atomic::spin_loop_hint()
 }
 
