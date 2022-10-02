@@ -29,7 +29,7 @@
 //! `concurrent-queue` used an `std` default feature. With this feature enabled, this crate will
 //! use [`std::thread::yield_now`] to avoid busy waiting in tight loops. However, with this
 //! feature disabled, [`core::hint::spin_loop`] will be used instead. Disabling `std` will allow
-//! this crate to be used on `no_std` platforms at the potential expense of more busy waiting. 
+//! this crate to be used on `no_std` platforms at the potential expense of more busy waiting.
 //! However, this feature has no effect on Rust versions prior to 1.56.
 //!
 //! [Bounded]: `ConcurrentQueue::bounded()`
