@@ -26,14 +26,23 @@
 //!
 //! # Features
 //!
-//! `concurrent-queue` used an `std` default feature. With this feature enabled, this crate will
+//! `concurrent-queue` uses an `std` default feature. With this feature enabled, this crate will
 //! use [`std::thread::yield_now`] to avoid busy waiting in tight loops. However, with this
 //! feature disabled, [`core::hint::spin_loop`] will be used instead. Disabling `std` will allow
 //! this crate to be used on `no_std` platforms at the potential expense of more busy waiting.
 //!
+//! There is also a `portable-atomic` feature, which uses a polyfill from the
+//! [`portable-atomic`] crate to provide atomic operations on platforms that do not support them.
+//! See the [`README`] for the [`portable-atomic`] crate for more information on how to use it on
+//! single-threaded targets. Note that even with this feature enabled, `concurrent-queue` still
+//! requires a global allocator to be available. See the documentation for the
+//! [`std::alloc::GlobalAlloc`] trait for more information.
+//!
 //! [Bounded]: `ConcurrentQueue::bounded()`
 //! [Unbounded]: `ConcurrentQueue::unbounded()`
 //! [closed]: `ConcurrentQueue::close()`
+//! [`portable-atomic`]: https://crates.io/crates/portable-atomic
+//! [`README`]: https://github.com/taiki-e/portable-atomic/blob/main/README.md#optional-cfg
 
 #![warn(missing_docs, missing_debug_implementations, rust_2018_idioms)]
 #![no_std]
@@ -44,7 +53,7 @@ extern crate std;
 
 use alloc::boxed::Box;
 use core::fmt;
-use core::sync::atomic::{self, AtomicUsize, Ordering};
+use sync::atomic::{self, AtomicUsize, Ordering};
 
 #[cfg(feature = "std")]
 use std::error;
@@ -53,11 +62,14 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use crate::bounded::Bounded;
 use crate::single::Single;
+use crate::sync::busy_wait;
 use crate::unbounded::Unbounded;
 
 mod bounded;
 mod single;
 mod unbounded;
+
+mod sync;
 
 /// A concurrent queue.
 ///
@@ -463,24 +475,13 @@ impl<T> fmt::Display for PushError<T> {
     }
 }
 
-/// Notify the CPU that we are currently busy-waiting.
-#[inline]
-fn busy_wait() {
-    #[cfg(feature = "std")]
-    std::thread::yield_now();
-    // Use the deprecated `spin_loop_hint` here in order to
-    // avoid bumping the MSRV.
-    #[allow(deprecated)]
-    #[cfg(not(feature = "std"))]
-    core::sync::atomic::spin_loop_hint()
-}
-
 /// Equivalent to `atomic::fence(Ordering::SeqCst)`, but in some cases faster.
 #[inline]
 fn full_fence() {
     if cfg!(all(
         any(target_arch = "x86", target_arch = "x86_64"),
-        not(miri)
+        not(miri),
+        not(loom)
     )) {
         // HACK(stjepang): On x86 architectures there are two different ways of executing
         // a `SeqCst` fence.

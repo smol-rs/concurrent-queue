@@ -1,10 +1,12 @@
 use alloc::{boxed::Box, vec::Vec};
-use core::cell::UnsafeCell;
 use core::mem::MaybeUninit;
-use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crossbeam_utils::CachePadded;
 
+use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::cell::UnsafeCell;
+#[allow(unused_imports)]
+use crate::sync::prelude::*;
 use crate::{busy_wait, PopError, PushError};
 
 /// A slot in a queue.
@@ -118,9 +120,9 @@ impl<T> Bounded<T> {
                 ) {
                     Ok(_) => {
                         // Write the value into the slot and update the stamp.
-                        unsafe {
-                            slot.value.get().write(MaybeUninit::new(value));
-                        }
+                        slot.value.with_mut(|slot| unsafe {
+                            slot.write(MaybeUninit::new(value));
+                        });
                         slot.stamp.store(tail + 1, Ordering::Release);
                         return Ok(());
                     }
@@ -137,6 +139,10 @@ impl<T> Bounded<T> {
                     // ...then the queue is full.
                     return Err(PushError::Full(value));
                 }
+
+                // Loom complains if there isn't an explicit busy wait here.
+                #[cfg(loom)]
+                busy_wait();
 
                 tail = self.tail.load(Ordering::Relaxed);
             } else {
@@ -181,7 +187,9 @@ impl<T> Bounded<T> {
                 ) {
                     Ok(_) => {
                         // Read the value from the slot and update the stamp.
-                        let value = unsafe { slot.value.get().read().assume_init() };
+                        let value = slot
+                            .value
+                            .with_mut(|slot| unsafe { slot.read().assume_init() });
                         slot.stamp
                             .store(head.wrapping_add(self.one_lap), Ordering::Release);
                         return Ok(value);
@@ -203,6 +211,10 @@ impl<T> Bounded<T> {
                         return Err(PopError::Empty);
                     }
                 }
+
+                // Loom complains if there isn't a busy-wait here.
+                #[cfg(loom)]
+                busy_wait();
 
                 head = self.head.load(Ordering::Relaxed);
             } else {
@@ -284,37 +296,48 @@ impl<T> Bounded<T> {
 impl<T> Drop for Bounded<T> {
     fn drop(&mut self) {
         // Get the index of the head.
-        let head = *self.head.get_mut();
-        let tail = *self.tail.get_mut();
+        let Self {
+            head,
+            tail,
+            buffer,
+            mark_bit,
+            ..
+        } = self;
 
-        let hix = head & (self.mark_bit - 1);
-        let tix = tail & (self.mark_bit - 1);
+        let mark_bit = *mark_bit;
 
-        let len = if hix < tix {
-            tix - hix
-        } else if hix > tix {
-            self.buffer.len() - hix + tix
-        } else if (tail & !self.mark_bit) == head {
-            0
-        } else {
-            self.buffer.len()
-        };
+        head.with_mut(|&mut head| {
+            tail.with_mut(|&mut tail| {
+                let hix = head & (mark_bit - 1);
+                let tix = tail & (mark_bit - 1);
 
-        // Loop over all slots that hold a value and drop them.
-        for i in 0..len {
-            // Compute the index of the next slot holding a value.
-            let index = if hix + i < self.buffer.len() {
-                hix + i
-            } else {
-                hix + i - self.buffer.len()
-            };
+                let len = if hix < tix {
+                    tix - hix
+                } else if hix > tix {
+                    buffer.len() - hix + tix
+                } else if (tail & !mark_bit) == head {
+                    0
+                } else {
+                    buffer.len()
+                };
 
-            // Drop the value in the slot.
-            let slot = &self.buffer[index];
-            unsafe {
-                let value = &mut *slot.value.get();
-                value.as_mut_ptr().drop_in_place();
-            }
-        }
+                // Loop over all slots that hold a value and drop them.
+                for i in 0..len {
+                    // Compute the index of the next slot holding a value.
+                    let index = if hix + i < buffer.len() {
+                        hix + i
+                    } else {
+                        hix + i - buffer.len()
+                    };
+
+                    // Drop the value in the slot.
+                    let slot = &buffer[index];
+                    slot.value.with_mut(|slot| unsafe {
+                        let value = &mut *slot;
+                        value.as_mut_ptr().drop_in_place();
+                    });
+                }
+            });
+        });
     }
 }
