@@ -1,3 +1,9 @@
+# Version 2.0.0
+
+- Add support for the `portable_atomic` and `loom` crates. (#27)
+- **Breaking:** Add an `std` feature that can be disabled to use this crate on `no_std` platforms. (#22)
+- Replace usage of `cache-padded` with `crossbeam-utils`. (#26)
+
 # Version 1.2.4
 
 - Fix fence on x86 and miri. (#18)
