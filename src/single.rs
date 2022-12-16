@@ -90,11 +90,7 @@ impl<T> Single<T> {
 
     /// Returns the number of items in the queue.
     pub fn len(&self) -> usize {
-        if self.state.load(Ordering::SeqCst) & PUSHED == 0 {
-            0
-        } else {
-            1
-        }
+        usize::from(self.state.load(Ordering::SeqCst) & PUSHED != 0)
     }
 
     /// Returns `true` if the queue is empty.
