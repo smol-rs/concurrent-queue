@@ -1,26 +1,37 @@
 #![allow(clippy::bool_assert_comparison)]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-
 use concurrent_queue::{ConcurrentQueue, PopError, PushError};
 use easy_parallel::Parallel;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
 fn smoke() {
     let q = ConcurrentQueue::bounded(2);
 
-    q.push(7).unwrap();
-    assert_eq!(q.pop(), Ok(7));
+    q.push(()).unwrap();
+    assert_eq!(q.pop(), Ok(()));
 
-    q.push(8).unwrap();
-    assert_eq!(q.pop(), Ok(8));
+    q.push(()).unwrap();
+    assert_eq!(q.pop(), Ok(()));
+    assert!(q.pop().is_err());
+}
+
+#[test]
+fn smoke_unbounded() {
+    let q = ConcurrentQueue::unbounded();
+
+    q.push(()).unwrap();
+    assert_eq!(q.pop(), Ok(()));
+
+    q.push(()).unwrap();
+    assert_eq!(q.pop(), Ok(()));
     assert!(q.pop().is_err());
 }
 
 #[test]
 fn capacity() {
     for i in 1..10 {
-        let q = ConcurrentQueue::<i32>::bounded(i);
+        let q = ConcurrentQueue::<()>::bounded(i);
         assert_eq!(q.capacity(), Some(i));
     }
 }
@@ -28,24 +39,24 @@ fn capacity() {
 #[test]
 #[should_panic(expected = "capacity must be positive")]
 fn zero_capacity() {
-    let _ = ConcurrentQueue::<i32>::bounded(0);
+    let _ = ConcurrentQueue::<()>::bounded(0);
 }
 
 #[test]
 fn len_empty_full() {
-    let q = ConcurrentQueue::<i32>::bounded(2);
+    let q = ConcurrentQueue::<()>::bounded(2);
 
     assert_eq!(q.len(), 0);
     assert_eq!(q.is_empty(), true);
     assert_eq!(q.is_full(), false);
 
-    q.push(1).unwrap();
+    q.push(()).unwrap();
 
     assert_eq!(q.len(), 1);
     assert_eq!(q.is_empty(), false);
     assert_eq!(q.is_full(), false);
 
-    q.push(1).unwrap();
+    q.push(()).unwrap();
 
     assert_eq!(q.len(), 2);
     assert_eq!(q.is_empty(), false);
@@ -59,16 +70,43 @@ fn len_empty_full() {
 }
 
 #[test]
+fn len_empty_full_unbounded() {
+    let q = ConcurrentQueue::<()>::unbounded();
+
+    assert_eq!(q.len(), 0);
+    assert_eq!(q.is_empty(), true);
+    assert_eq!(q.is_full(), false);
+
+    q.push(()).unwrap();
+
+    assert_eq!(q.len(), 1);
+    assert_eq!(q.is_empty(), false);
+    assert_eq!(q.is_full(), false);
+
+    q.push(()).unwrap();
+
+    assert_eq!(q.len(), 2);
+    assert_eq!(q.is_empty(), false);
+    assert_eq!(q.is_full(), false);
+
+    q.pop().unwrap();
+
+    assert_eq!(q.len(), 1);
+    assert_eq!(q.is_empty(), false);
+    assert_eq!(q.is_full(), false);
+}
+
+#[test]
 fn len() {
     const COUNT: usize = if cfg!(miri) { 50 } else { 25_000 };
     const CAP: usize = if cfg!(miri) { 50 } else { 1000 };
 
-    let q = ConcurrentQueue::bounded(CAP);
+    let q = ConcurrentQueue::<()>::bounded(CAP);
     assert_eq!(q.len(), 0);
 
     for _ in 0..CAP / 10 {
         for i in 0..50 {
-            q.push(i).unwrap();
+            q.push(()).unwrap();
             assert_eq!(q.len(), i + 1);
         }
 
@@ -80,7 +118,7 @@ fn len() {
     assert_eq!(q.len(), 0);
 
     for i in 0..CAP {
-        q.push(i).unwrap();
+        q.push(()).unwrap();
         assert_eq!(q.len(), i + 1);
     }
 
@@ -91,10 +129,9 @@ fn len() {
 
     Parallel::new()
         .add(|| {
-            for i in 0..COUNT {
+            for _ in 0..COUNT {
                 loop {
-                    if let Ok(x) = q.pop() {
-                        assert_eq!(x, i);
+                    if let Ok(()) = q.pop() {
                         break;
                     }
                 }
@@ -103,8 +140,8 @@ fn len() {
             }
         })
         .add(|| {
-            for i in 0..COUNT {
-                while q.push(i).is_err() {}
+            for _ in 0..COUNT {
+                while q.push(()).is_err() {}
                 let len = q.len();
                 assert!(len <= CAP);
             }
@@ -115,9 +152,26 @@ fn len() {
 }
 
 #[test]
+fn len_unbounded() {
+    let q = ConcurrentQueue::<()>::unbounded();
+    assert_eq!(q.len(), 0);
+
+    for i in 0..1000 {
+        q.push(()).unwrap();
+        assert_eq!(q.len(), i + 1);
+    }
+
+    for _ in 0..1000 {
+        q.pop().unwrap();
+    }
+
+    assert_eq!(q.len(), 0);
+}
+
+#[test]
 fn close() {
-    let q = ConcurrentQueue::bounded(2);
-    assert_eq!(q.push(10), Ok(()));
+    let q = ConcurrentQueue::<()>::bounded(2);
+    assert_eq!(q.push(()), Ok(()));
 
     assert!(!q.is_closed());
     assert!(q.close());
@@ -125,8 +179,24 @@ fn close() {
     assert!(q.is_closed());
     assert!(!q.close());
 
-    assert_eq!(q.push(20), Err(PushError::Closed(20)));
-    assert_eq!(q.pop(), Ok(10));
+    assert_eq!(q.push(()), Err(PushError::Closed(())));
+    assert_eq!(q.pop(), Ok(()));
+    assert_eq!(q.pop(), Err(PopError::Closed));
+}
+
+#[test]
+fn close_unbounded() {
+    let q = ConcurrentQueue::<()>::unbounded();
+    assert_eq!(q.push(()), Ok(()));
+
+    assert!(!q.is_closed());
+    assert!(q.close());
+
+    assert!(q.is_closed());
+    assert!(!q.close());
+
+    assert_eq!(q.push(()), Err(PushError::Closed(())));
+    assert_eq!(q.pop(), Ok(()));
     assert_eq!(q.pop(), Err(PopError::Closed));
 }
 
@@ -134,14 +204,13 @@ fn close() {
 fn spsc() {
     const COUNT: usize = if cfg!(miri) { 100 } else { 100_000 };
 
-    let q = ConcurrentQueue::bounded(3);
+    let q = ConcurrentQueue::<()>::bounded(3);
 
     Parallel::new()
         .add(|| {
-            for i in 0..COUNT {
+            for _ in 0..COUNT {
                 loop {
-                    if let Ok(x) = q.pop() {
-                        assert_eq!(x, i);
+                    if let Ok(()) = q.pop() {
                         break;
                     }
                 }
@@ -149,42 +218,11 @@ fn spsc() {
             assert!(q.pop().is_err());
         })
         .add(|| {
-            for i in 0..COUNT {
-                while q.push(i).is_err() {}
-            }
-        })
-        .run();
-}
-
-#[test]
-fn mpmc() {
-    const COUNT: usize = if cfg!(miri) { 100 } else { 25_000 };
-    const THREADS: usize = 4;
-
-    let q = ConcurrentQueue::<usize>::bounded(3);
-    let v = (0..COUNT).map(|_| AtomicUsize::new(0)).collect::<Vec<_>>();
-
-    Parallel::new()
-        .each(0..THREADS, |_| {
             for _ in 0..COUNT {
-                let n = loop {
-                    if let Ok(x) = q.pop() {
-                        break x;
-                    }
-                };
-                v[n].fetch_add(1, Ordering::SeqCst);
-            }
-        })
-        .each(0..THREADS, |_| {
-            for i in 0..COUNT {
-                while q.push(i).is_err() {}
+                while q.push(()).is_err() {}
             }
         })
         .run();
-
-    for c in v {
-        assert_eq!(c.load(Ordering::SeqCst), THREADS);
-    }
 }
 
 #[test]
@@ -195,7 +233,7 @@ fn drops() {
     static DROPS: AtomicUsize = AtomicUsize::new(0);
 
     #[derive(Debug, PartialEq)]
-    struct DropCounter(i32);
+    struct DropCounter;
 
     impl Drop for DropCounter {
         fn drop(&mut self) {
@@ -218,7 +256,7 @@ fn drops() {
             })
             .add(|| {
                 for _ in 0..steps {
-                    while q.push(DropCounter(0)).is_err() {
+                    while q.push(DropCounter).is_err() {
                         DROPS.fetch_sub(1, Ordering::SeqCst);
                     }
                 }
@@ -226,7 +264,7 @@ fn drops() {
             .run();
 
         for _ in 0..additional {
-            q.push(DropCounter(0)).unwrap();
+            q.push(DropCounter).unwrap();
         }
 
         assert_eq!(DROPS.load(Ordering::SeqCst), steps);
@@ -245,7 +283,7 @@ fn linearizable() {
     Parallel::new()
         .each(0..THREADS, |_| {
             for _ in 0..COUNT {
-                while q.push(0).is_err() {}
+                while q.push(()).is_err() {}
                 q.pop().unwrap();
             }
         })

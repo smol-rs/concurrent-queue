@@ -125,7 +125,7 @@ fn drops() {
     static DROPS: AtomicUsize = AtomicUsize::new(0);
 
     #[derive(Debug, PartialEq)]
-    struct DropCounter;
+    struct DropCounter(i32);
 
     impl Drop for DropCounter {
         fn drop(&mut self) {
@@ -148,7 +148,7 @@ fn drops() {
             })
             .add(|| {
                 for _ in 0..steps {
-                    while q.push(DropCounter).is_err() {
+                    while q.push(DropCounter(0)).is_err() {
                         DROPS.fetch_sub(1, Ordering::SeqCst);
                     }
                 }
@@ -156,7 +156,7 @@ fn drops() {
             .run();
 
         for _ in 0..additional {
-            q.push(DropCounter).unwrap();
+            q.push(DropCounter(0)).unwrap();
         }
 
         assert_eq!(DROPS.load(Ordering::SeqCst), steps);

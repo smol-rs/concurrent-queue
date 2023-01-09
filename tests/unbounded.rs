@@ -18,12 +18,12 @@ fn smoke() {
 
 #[test]
 fn len_empty_full() {
-    let q = ConcurrentQueue::unbounded();
+    let q = ConcurrentQueue::<i32>::unbounded();
 
     assert_eq!(q.len(), 0);
     assert_eq!(q.is_empty(), true);
 
-    q.push(()).unwrap();
+    q.push(0).unwrap();
 
     assert_eq!(q.len(), 1);
     assert_eq!(q.is_empty(), false);
@@ -134,7 +134,7 @@ fn drops() {
     static DROPS: AtomicUsize = AtomicUsize::new(0);
 
     #[derive(Debug, PartialEq)]
-    struct DropCounter;
+    struct DropCounter(i32);
 
     impl Drop for DropCounter {
         fn drop(&mut self) {
@@ -157,13 +157,13 @@ fn drops() {
             })
             .add(|| {
                 for _ in 0..steps {
-                    q.push(DropCounter).unwrap();
+                    q.push(DropCounter(0)).unwrap();
                 }
             })
             .run();
 
         for _ in 0..additional {
-            q.push(DropCounter).unwrap();
+            q.push(DropCounter(0)).unwrap();
         }
 
         assert_eq!(DROPS.load(Ordering::SeqCst), steps);

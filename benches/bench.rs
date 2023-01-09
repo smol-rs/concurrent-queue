@@ -76,6 +76,7 @@ macro_rules! bench_all(
                     $f::<T>(black_box(&q), black_box(&q));
                 }));
             }
+            helper::<()>(c);
             helper::<u8>(c);
             helper::<u16>(c);
             helper::<u32>(c);

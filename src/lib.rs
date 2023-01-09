@@ -53,6 +53,7 @@ extern crate std;
 
 use alloc::boxed::Box;
 use core::fmt;
+use core::mem::size_of;
 use sync::atomic::{self, AtomicUsize, Ordering};
 
 #[cfg(feature = "std")]
@@ -64,10 +65,12 @@ use crate::bounded::Bounded;
 use crate::single::Single;
 use crate::sync::busy_wait;
 use crate::unbounded::Unbounded;
+use crate::zst::Zst;
 
 mod bounded;
 mod single;
 mod unbounded;
+mod zst;
 
 mod sync;
 
@@ -102,6 +105,7 @@ enum Inner<T> {
     Single(Single<T>),
     Bounded(Box<Bounded<T>>),
     Unbounded(Box<Unbounded<T>>),
+    Zst(Zst<T>),
 }
 
 impl<T> ConcurrentQueue<T> {
@@ -121,6 +125,11 @@ impl<T> ConcurrentQueue<T> {
     /// let q = ConcurrentQueue::<i32>::bounded(100);
     /// ```
     pub fn bounded(cap: usize) -> ConcurrentQueue<T> {
+        // Switch to the optimized ZST implementation if the type is ZST.
+        if size_of::<T>() == 0 {
+            return ConcurrentQueue(Inner::Zst(Zst::new(Some(cap))));
+        }
+
         if cap == 1 {
             ConcurrentQueue(Inner::Single(Single::new()))
         } else {
@@ -138,7 +147,12 @@ impl<T> ConcurrentQueue<T> {
     /// let q = ConcurrentQueue::<i32>::unbounded();
     /// ```
     pub fn unbounded() -> ConcurrentQueue<T> {
-        ConcurrentQueue(Inner::Unbounded(Box::new(Unbounded::new())))
+        // Switch to the optimized ZST implementation if the type is ZST.
+        if size_of::<T>() == 0 {
+            ConcurrentQueue(Inner::Zst(Zst::new(None)))
+        } else {
+            ConcurrentQueue(Inner::Unbounded(Box::new(Unbounded::new())))
+        }
     }
 
     /// Attempts to push an item into the queue.
@@ -175,6 +189,7 @@ impl<T> ConcurrentQueue<T> {
             Inner::Single(q) => q.push(value),
             Inner::Bounded(q) => q.push(value),
             Inner::Unbounded(q) => q.push(value),
+            Inner::Zst(q) => q.push(value),
         }
     }
 
@@ -208,6 +223,7 @@ impl<T> ConcurrentQueue<T> {
             Inner::Single(q) => q.pop(),
             Inner::Bounded(q) => q.pop(),
             Inner::Unbounded(q) => q.pop(),
+            Inner::Zst(q) => q.pop(),
         }
     }
 
@@ -229,6 +245,7 @@ impl<T> ConcurrentQueue<T> {
             Inner::Single(q) => q.is_empty(),
             Inner::Bounded(q) => q.is_empty(),
             Inner::Unbounded(q) => q.is_empty(),
+            Inner::Zst(q) => q.is_empty(),
         }
     }
 
@@ -252,6 +269,7 @@ impl<T> ConcurrentQueue<T> {
             Inner::Single(q) => q.is_full(),
             Inner::Bounded(q) => q.is_full(),
             Inner::Unbounded(q) => q.is_full(),
+            Inner::Zst(q) => q.is_full(),
         }
     }
 
@@ -276,6 +294,7 @@ impl<T> ConcurrentQueue<T> {
             Inner::Single(q) => q.len(),
             Inner::Bounded(q) => q.len(),
             Inner::Unbounded(q) => q.len(),
+            Inner::Zst(q) => q.len(),
         }
     }
 
@@ -299,6 +318,7 @@ impl<T> ConcurrentQueue<T> {
             Inner::Single(_) => Some(1),
             Inner::Bounded(q) => Some(q.capacity()),
             Inner::Unbounded(_) => None,
+            Inner::Zst(q) => q.capacity(),
         }
     }
 
@@ -334,6 +354,7 @@ impl<T> ConcurrentQueue<T> {
             Inner::Single(q) => q.close(),
             Inner::Bounded(q) => q.close(),
             Inner::Unbounded(q) => q.close(),
+            Inner::Zst(q) => q.close(),
         }
     }
 
@@ -355,6 +376,7 @@ impl<T> ConcurrentQueue<T> {
             Inner::Single(q) => q.is_closed(),
             Inner::Bounded(q) => q.is_closed(),
             Inner::Unbounded(q) => q.is_closed(),
+            Inner::Zst(q) => q.is_closed(),
         }
     }
 }
