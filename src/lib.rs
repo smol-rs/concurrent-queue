@@ -33,10 +33,10 @@
 //!
 //! There is also a `portable-atomic` feature, which uses a polyfill from the
 //! [`portable-atomic`] crate to provide atomic operations on platforms that do not support them.
-//! See the [`README`] for the [`portable-atomic`] crate for more information on how to use it on
-//! single-threaded targets. Note that even with this feature enabled, `concurrent-queue` still
-//! requires a global allocator to be available. See the documentation for the
-//! [`std::alloc::GlobalAlloc`] trait for more information.
+//! See the [`README`] for the [`portable-atomic`] crate for more information on how to use it.
+//! Note that even with this feature enabled, `concurrent-queue` still requires a global allocator
+//! to be available. See the documentation for the [`std::alloc::GlobalAlloc`] trait for more
+//! information.
 //!
 //! [Bounded]: `ConcurrentQueue::bounded()`
 //! [Unbounded]: `ConcurrentQueue::unbounded()`
