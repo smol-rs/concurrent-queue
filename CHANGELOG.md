@@ -1,6 +1,10 @@
+# Version 2.1.0
+
+- Update `portable-atomic` to 1.0. (#33)
+
 # Version 2.0.0
 
-- Add support for the `portable_atomic` and `loom` crates. (#27)
+- Add support for the `portable-atomic` and `loom` crates. (#27)
 - **Breaking:** Add an `std` feature that can be disabled to use this crate on `no_std` platforms. (#22)
 - Replace usage of `cache-padded` with `crossbeam-utils`. (#26)
 
