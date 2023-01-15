@@ -23,7 +23,7 @@ bench = false
 
 [dependencies]
 crossbeam-utils = { version = "0.8.11", default-features = false }
-portable-atomic = { version = "0.3", default-features = false, optional = true }
+portable-atomic = { version = "1", default-features = false, optional = true }
 
 # Enables loom testing. This feature is permanently unstable and the API may
 # change at any time.
