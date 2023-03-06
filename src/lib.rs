@@ -211,6 +211,35 @@ impl<T> ConcurrentQueue<T> {
         }
     }
 
+    /// Get an iterator over the items in the queue.
+    ///
+    /// The iterator will continue until the queue is empty or closed. It will never block;
+    /// if the queue is empty, the iterator will return `None`. If new items are pushed into
+    /// the queue, the iterator may return `Some` in the future after returning `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use concurrent_queue::ConcurrentQueue;
+    ///
+    /// let q = ConcurrentQueue::bounded(5);
+    /// q.push(1).unwrap();
+    /// q.push(2).unwrap();
+    /// q.push(3).unwrap();
+    ///
+    /// let mut iter = q.try_iter();
+    /// assert_eq!(iter.by_ref().sum::<i32>(), 6);
+    /// assert_eq!(iter.next(), None);
+    ///
+    /// // Pushing more items will make them available to the iterator.
+    /// q.push(4).unwrap();
+    /// assert_eq!(iter.next(), Some(4));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    pub fn try_iter(&self) -> TryIter<'_, T> {
+        TryIter { queue: self }
+    }
+
     /// Returns `true` if the queue is empty.
     ///
     /// # Examples
@@ -366,6 +395,31 @@ impl<T> fmt::Debug for ConcurrentQueue<T> {
             .field("capacity", &self.capacity())
             .field("is_closed", &self.is_closed())
             .finish()
+    }
+}
+
+/// An iterator that pops items from a [`ConcurrentQueue`].
+///
+/// This iterator will never block; it will return `None` once the queue has
+/// been exhausted. Calling `next` after `None` may yield `Some(item)` if more items
+/// are pushed to the queue.
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[derive(Clone)]
+pub struct TryIter<'a, T> {
+    queue: &'a ConcurrentQueue<T>,
+}
+
+impl<T> fmt::Debug for TryIter<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Iter").field(&self.queue).finish()
+    }
+}
+
+impl<T> Iterator for TryIter<'_, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.queue.pop().ok()
     }
 }
 
