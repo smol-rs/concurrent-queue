@@ -18,7 +18,7 @@ pub struct Single<T> {
 
 impl<T> Single<T> {
     /// Creates a new single-element queue.
-    pub fn new() -> Single<T> {
+    pub const fn new() -> Single<T> {
         Single {
             state: AtomicUsize::new(0),
             slot: UnsafeCell::new(MaybeUninit::uninit()),

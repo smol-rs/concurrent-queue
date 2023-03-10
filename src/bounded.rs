@@ -275,7 +275,7 @@ impl<T> Bounded<T> {
     }
 
     /// Returns the capacity of the queue.
-    pub fn capacity(&self) -> usize {
+    pub const fn capacity(&self) -> usize {
         self.buffer.len()
     }
 
