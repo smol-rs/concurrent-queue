@@ -3,7 +3,7 @@ name = "concurrent-queue"
 # When publishing a new version:
 # - Update CHANGELOG.md
 # - Create "v1.x.y" git tag
-version = "2.1.0"
+version = "2.2.0"
 authors = [
     "Stjepan Glavina <stjepang@gmail.com>",
     "Taiki Endo <te316e89@gmail.com>",

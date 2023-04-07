@@ -1,3 +1,7 @@
+# Version 2.2.0
+
+- Add the try_iter method. (#36)
+
 # Version 2.1.0
 
 - Update `portable-atomic` to 1.0. (#33)
