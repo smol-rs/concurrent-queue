@@ -7,7 +7,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::cell::UnsafeCell;
 #[allow(unused_imports)]
 use crate::sync::prelude::*;
-use crate::{busy_wait, PopError, PushError};
+use crate::{busy_wait, GetError, PopError, PushError};
 
 /// A slot in a queue.
 struct Slot<T> {
@@ -222,6 +222,67 @@ impl<T> Bounded<T> {
                 busy_wait();
                 head = self.head.load(Ordering::Relaxed);
             }
+        }
+    }
+
+    pub fn head_mut(&mut self) -> Result<&mut T, GetError> {
+        let head = self.head.with_mut(|&mut head| head);
+        let tail = self.tail.with_mut(|&mut tail| tail);
+
+        // If the tail equals the head, that means the queue is empty.
+        if (tail & !self.mark_bit) == head {
+            // Check if the queue is closed.
+            if tail & self.mark_bit != 0 {
+                Err(GetError::Closed)
+            } else {
+                Err(GetError::Empty)
+            }
+        } else {
+            // Deconstruct the head.
+            let index = head & (self.mark_bit - 1);
+
+            // Inspect the corresponding slot.
+            let slot = &self.buffer[index];
+            let value = slot.value.with_mut(|slot| unsafe {
+                let value = &mut *slot;
+                &mut *value.as_mut_ptr()
+            });
+            Ok(value)
+        }
+    }
+
+    pub fn tail_mut(&mut self) -> Result<&mut T, GetError> {
+        let head = self.head.with_mut(|&mut head| head);
+        let tail = self.tail.with_mut(|&mut tail| tail);
+
+        // If the tail equals the head, that means the queue is empty.
+        if (tail & !self.mark_bit) == head {
+            // Check if the queue is closed.
+            if tail & self.mark_bit != 0 {
+                Err(GetError::Closed)
+            } else {
+                Err(GetError::Empty)
+            }
+        } else {
+            // Deconstruct the tail.
+            let mut index = tail & (self.mark_bit - 1);
+            // The tail is always moved forward by one, so we need to subtract to get the index of
+            // the last slot holding a value.
+            index = if let Some(subtracted_index) = index.checked_sub(1) {
+                subtracted_index
+            } else {
+                // If the checked subtraction fails, that means the tail had just completed a lap,
+                // so we go to the last slot in the buffer.
+                self.buffer.len() - 1
+            };
+
+            // Inspect the corresponding slot.
+            let slot = &self.buffer[index];
+            let value = slot.value.with_mut(|slot| unsafe {
+                let value = &mut *slot;
+                &mut *value.as_mut_ptr()
+            });
+            Ok(value)
         }
     }
 

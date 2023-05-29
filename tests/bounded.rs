@@ -2,7 +2,7 @@
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use concurrent_queue::{ConcurrentQueue, PopError, PushError};
+use concurrent_queue::{ConcurrentQueue, GetError, PopError, PushError};
 use easy_parallel::Parallel;
 
 #[test]
@@ -128,6 +128,42 @@ fn close() {
     assert_eq!(q.push(20), Err(PushError::Closed(20)));
     assert_eq!(q.pop(), Ok(10));
     assert_eq!(q.pop(), Err(PopError::Closed));
+}
+
+#[test]
+fn head_mut() {
+    let mut q = ConcurrentQueue::bounded(2);
+    assert_eq!(q.head_mut(), Err(GetError::Empty));
+    assert_eq!(q.push(10), Ok(()));
+    assert_eq!(q.head_mut(), Ok(&mut 10));
+
+    assert_eq!(q.push(20), Ok(()));
+    assert_eq!(q.head_mut(), Ok(&mut 10));
+
+    assert!(q.close());
+    assert_eq!(q.head_mut(), Ok(&mut 10));
+
+    assert_eq!(q.pop(), Ok(10));
+    assert_eq!(q.pop(), Ok(20));
+    assert_eq!(q.head_mut(), Err(GetError::Closed));
+}
+
+#[test]
+fn tail_mut() {
+    let mut q = ConcurrentQueue::bounded(2);
+    assert_eq!(q.tail_mut(), Err(GetError::Empty));
+    assert_eq!(q.push(10), Ok(()));
+    assert_eq!(q.tail_mut(), Ok(&mut 10));
+
+    assert_eq!(q.push(20), Ok(()));
+    assert_eq!(q.tail_mut(), Ok(&mut 20));
+
+    assert!(q.close());
+    assert_eq!(q.tail_mut(), Ok(&mut 20));
+
+    assert_eq!(q.pop(), Ok(10));
+    assert_eq!(q.pop(), Ok(20));
+    assert_eq!(q.tail_mut(), Err(GetError::Closed));
 }
 
 #[test]

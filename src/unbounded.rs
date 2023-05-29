@@ -8,7 +8,7 @@ use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use crate::sync::cell::UnsafeCell;
 #[allow(unused_imports)]
 use crate::sync::prelude::*;
-use crate::{busy_wait, PopError, PushError};
+use crate::{busy_wait, GetError, PopError, PushError};
 
 // Bits indicating the state of a slot:
 // * If a value has been written into the slot, `WRITE` is set.
@@ -334,6 +334,14 @@ impl<T> Unbounded<T> {
                 }
             }
         }
+    }
+
+    pub fn head_mut(&mut self) -> Result<&mut T, GetError> {
+        todo!()
+    }
+
+    pub fn tail_mut(&mut self) -> Result<&mut T, GetError> {
+        todo!()
     }
 
     /// Returns the number of items in the queue.

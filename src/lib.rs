@@ -284,6 +284,77 @@ impl<T> ConcurrentQueue<T> {
         }
     }
 
+    /// Attempts to return the value stored at the head of the queue.
+    ///
+    /// If the queue is empty, an error is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use concurrent_queue::{ConcurrentQueue, GetError};
+    ///
+    /// let mut q = ConcurrentQueue::bounded(2);
+    ///
+    /// assert_eq!(q.head_mut(), Err(GetError::Empty));
+    ///
+    /// // Push one item and close the queue.
+    /// assert_eq!(q.push(10), Ok(()));
+    /// q.close();
+    ///
+    /// // Remaining items can be retrieved.
+    /// assert_eq!(q.head_mut(), Ok(&mut 10));
+    /// // Pop remaining items.
+    /// assert_eq!(q.pop(), Ok(10));
+    ///
+    /// // Again, head_mut errors when the queue is empty,
+    /// // but now also indicates that the queue is closed.
+    /// assert_eq!(q.head_mut(), Err(GetError::Closed));
+    /// ```
+    pub fn head_mut(&mut self) -> Result<&mut T, GetError> {
+        match &mut self.0 {
+            Inner::Single(q) => q.head_mut(),
+            Inner::Bounded(q) => q.head_mut(),
+            Inner::Unbounded(q) => q.head_mut(),
+        }
+    }
+
+    /// Attempts to return the value stored at the tail of the queue.
+    ///
+    /// If the queue is empty, an error is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use concurrent_queue::{ConcurrentQueue, GetError};
+    ///
+    /// let mut q = ConcurrentQueue::bounded(2);
+    ///
+    /// assert_eq!(q.tail_mut(), Err(GetError::Empty));
+    ///
+    /// // Push two items and close the queue.
+    /// assert_eq!(q.push(10), Ok(()));
+    /// assert_eq!(q.push(20), Ok(()));
+    /// q.close();
+    ///
+    /// // Remaining items can be retrieved.
+    /// // Pop remaining items.
+    /// assert_eq!(q.tail_mut(), Ok(&mut 20));
+    /// assert_eq!(q.pop(), Ok(10));
+    /// assert_eq!(q.tail_mut(), Ok(&mut 20));
+    /// assert_eq!(q.pop(), Ok(20));
+    ///
+    /// // Again, tail_mut errors when the queue is empty,
+    /// // but now also indicates that the queue is closed.
+    /// assert_eq!(q.tail_mut(), Err(GetError::Closed));
+    /// ```
+    pub fn tail_mut(&mut self) -> Result<&mut T, GetError> {
+        match &mut self.0 {
+            Inner::Single(q) => q.tail_mut(),
+            Inner::Bounded(q) => q.tail_mut(),
+            Inner::Unbounded(q) => q.tail_mut(),
+        }
+    }
+
     /// Returns the number of items in the queue.
     ///
     /// # Examples
@@ -525,6 +596,55 @@ impl<T> fmt::Display for PushError<T> {
         match self {
             PushError::Full(_) => write!(f, "Full"),
             PushError::Closed(_) => write!(f, "Closed"),
+        }
+    }
+}
+
+/// Error which occurs when attempting to get the head or tail of an empty or closed queue.
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum GetError {
+    /// The queue is empty but not closed.
+    Empty,
+
+    /// The queue is closed.
+    Closed,
+}
+
+impl GetError {
+    /// Returns `true` if the queue is empty but not closed.
+    pub fn is_empty(&self) -> bool {
+        match self {
+            GetError::Empty => true,
+            GetError::Closed => false,
+        }
+    }
+
+    /// Returns `true` if the queue is empty and closed.
+    pub fn is_closed(&self) -> bool {
+        match self {
+            GetError::Empty => false,
+            GetError::Closed => true,
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl error::Error for GetError {}
+
+impl fmt::Debug for GetError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GetError::Empty => write!(f, "Empty"),
+            GetError::Closed => write!(f, "Closed"),
+        }
+    }
+}
+
+impl fmt::Display for GetError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GetError::Empty => write!(f, "Empty"),
+            GetError::Closed => write!(f, "Closed"),
         }
     }
 }

@@ -4,7 +4,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::cell::UnsafeCell;
 #[allow(unused_imports)]
 use crate::sync::prelude::*;
-use crate::{busy_wait, PopError, PushError};
+use crate::{busy_wait, GetError, PopError, PushError};
 
 const LOCKED: usize = 1 << 0;
 const PUSHED: usize = 1 << 1;
@@ -86,6 +86,14 @@ impl<T> Single<T> {
                 state = prev & !LOCKED;
             }
         }
+    }
+
+    pub fn head_mut(&mut self) -> Result<&mut T, GetError> {
+        todo!()
+    }
+
+    pub fn tail_mut(&mut self) -> Result<&mut T, GetError> {
+        todo!()
     }
 
     /// Returns the number of items in the queue.
