@@ -46,6 +46,12 @@
 
 #![warn(missing_docs, missing_debug_implementations, rust_2018_idioms)]
 #![no_std]
+#![doc(
+    html_favicon_url = "https://raw.githubusercontent.com/smol-rs/smol/master/assets/images/logo_fullsize_transparent.png"
+)]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/smol-rs/smol/master/assets/images/logo_fullsize_transparent.png"
+)]
 
 extern crate alloc;
 #[cfg(feature = "std")]
