@@ -28,7 +28,7 @@ portable-atomic = { version = "1", default-features = false, optional = true }
 # Enables loom testing. This feature is permanently unstable and the API may
 # change at any time.
 [target.'cfg(loom)'.dependencies]
-loom = { version = "0.6", optional = true }
+loom = { version = "0.7", optional = true }
 
 [[bench]]
 name = "bench"
