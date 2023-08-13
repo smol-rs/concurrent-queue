@@ -33,7 +33,6 @@ mod sync_impl {
     pub(crate) use loom::cell;
 
     pub(crate) mod atomic {
-        pub(crate) use core::sync::atomic::compiler_fence;
         pub(crate) use loom::sync::atomic::*;
     }
 
