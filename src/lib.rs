@@ -59,12 +59,11 @@ extern crate std;
 
 use alloc::boxed::Box;
 use core::fmt;
+use core::panic::{RefUnwindSafe, UnwindSafe};
 use sync::atomic::{self, Ordering};
 
 #[cfg(feature = "std")]
 use std::error;
-#[cfg(feature = "std")]
-use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use crate::bounded::Bounded;
 use crate::single::Single;
@@ -99,9 +98,7 @@ pub struct ConcurrentQueue<T>(Inner<T>);
 unsafe impl<T: Send> Send for ConcurrentQueue<T> {}
 unsafe impl<T: Send> Sync for ConcurrentQueue<T> {}
 
-#[cfg(feature = "std")]
 impl<T> UnwindSafe for ConcurrentQueue<T> {}
-#[cfg(feature = "std")]
 impl<T> RefUnwindSafe for ConcurrentQueue<T> {}
 
 enum Inner<T> {
