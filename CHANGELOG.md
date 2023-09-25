@@ -1,3 +1,9 @@
+# Version 2.3.0
+
+- Implement `UnwindSafe` without libstd. (#49)
+- Bump `fastrand` to `v2.0.0`. (#43)
+- Use inline assembly in the `full_fence` funtion. (#47)
+
 # Version 2.2.0
 
 - Add the try_iter method. (#36)
