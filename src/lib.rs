@@ -100,7 +100,7 @@ unsafe impl<T: Send> Sync for ConcurrentQueue<T> {}
 impl<T> UnwindSafe for ConcurrentQueue<T> {}
 impl<T> RefUnwindSafe for ConcurrentQueue<T> {}
 
-#[allow(clippy::large-enum-variant)]
+#[allow(clippy::large_enum_variant)]
 enum Inner<T> {
     Single(Single<T>),
     Bounded(Bounded<T>),
