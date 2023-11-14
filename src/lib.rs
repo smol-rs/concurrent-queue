@@ -57,7 +57,6 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-// use alloc::boxed::Box;
 use core::fmt;
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use sync::atomic::{self, Ordering};
@@ -101,6 +100,7 @@ unsafe impl<T: Send> Sync for ConcurrentQueue<T> {}
 impl<T> UnwindSafe for ConcurrentQueue<T> {}
 impl<T> RefUnwindSafe for ConcurrentQueue<T> {}
 
+#[allow(clippy::large-enum-variant)]
 enum Inner<T> {
     Single(Single<T>),
     Bounded(Bounded<T>),
