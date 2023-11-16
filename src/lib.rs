@@ -57,7 +57,6 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-use alloc::boxed::Box;
 use core::fmt;
 use core::panic::{RefUnwindSafe, UnwindSafe};
 use sync::atomic::{self, Ordering};
@@ -101,10 +100,11 @@ unsafe impl<T: Send> Sync for ConcurrentQueue<T> {}
 impl<T> UnwindSafe for ConcurrentQueue<T> {}
 impl<T> RefUnwindSafe for ConcurrentQueue<T> {}
 
+#[allow(clippy::large_enum_variant)]
 enum Inner<T> {
     Single(Single<T>),
-    Bounded(Box<Bounded<T>>),
-    Unbounded(Box<Unbounded<T>>),
+    Bounded(Bounded<T>),
+    Unbounded(Unbounded<T>),
 }
 
 impl<T> ConcurrentQueue<T> {
@@ -127,7 +127,7 @@ impl<T> ConcurrentQueue<T> {
         if cap == 1 {
             ConcurrentQueue(Inner::Single(Single::new()))
         } else {
-            ConcurrentQueue(Inner::Bounded(Box::new(Bounded::new(cap))))
+            ConcurrentQueue(Inner::Bounded(Bounded::new(cap)))
         }
     }
 
@@ -141,7 +141,7 @@ impl<T> ConcurrentQueue<T> {
     /// let q = ConcurrentQueue::<i32>::unbounded();
     /// ```
     pub fn unbounded() -> ConcurrentQueue<T> {
-        ConcurrentQueue(Inner::Unbounded(Box::new(Unbounded::new())))
+        ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
     }
 
     /// Attempts to push an item into the queue.
