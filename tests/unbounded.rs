@@ -1,9 +1,14 @@
 #![allow(clippy::bool_assert_comparison)]
 
+use concurrent_queue::{ConcurrentQueue, PopError, PushError};
+
+#[cfg(not(target_family = "wasm"))]
+use easy_parallel::Parallel;
+#[cfg(not(target_family = "wasm"))]
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use concurrent_queue::{ConcurrentQueue, PopError, PushError};
-use easy_parallel::Parallel;
+#[cfg(target_family = "wasm")]
+use wasm_bindgen_test::wasm_bindgen_test as test;
 
 #[test]
 fn smoke() {
@@ -69,6 +74,7 @@ fn close() {
     assert_eq!(q.pop(), Err(PopError::Closed));
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn spsc() {
     const COUNT: usize = if cfg!(miri) { 100 } else { 100_000 };
@@ -95,6 +101,7 @@ fn spsc() {
         .run();
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn mpmc() {
     const COUNT: usize = if cfg!(miri) { 100 } else { 25_000 };
@@ -126,6 +133,7 @@ fn mpmc() {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn drops() {
     const RUNS: usize = if cfg!(miri) { 20 } else { 100 };
