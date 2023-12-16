@@ -38,6 +38,7 @@ jobs:
       - name: Install Rust
         run: rustup update ${{ matrix.rust }} && rustup default ${{ matrix.rust }}
       - run: rustup target add thumbv7m-none-eabi
+      - run: rustup target add wasm32-unknown-unknown
       - name: Install cargo-hack and wasm-pack
         uses: taiki-e/install-action@v2
         with:
