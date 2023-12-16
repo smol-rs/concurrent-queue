@@ -39,7 +39,7 @@ jobs:
         run: rustup update ${{ matrix.rust }} && rustup default ${{ matrix.rust }}
       - run: rustup target add thumbv7m-none-eabi
       - name: Install cargo-hack and wasm-pack
-        uses: taiki-e/install-action
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-hack,wasm-pack
       - run: cargo build --all --all-features --all-targets
