@@ -7,10 +7,10 @@ version = "2.4.0"
 authors = [
     "Stjepan Glavina <stjepang@gmail.com>",
     "Taiki Endo <te316e89@gmail.com>",
-    "John Nunley <jtnunley01@gmail.com>"
+    "John Nunley <dev@notgull.net>"
 ]
 edition = "2018"
-rust-version = "1.59"
+rust-version = "1.61"
 description = "Concurrent multi-producer multi-consumer queue"
 license = "Apache-2.0 OR MIT"
 repository = "https://github.com/smol-rs/concurrent-queue"
