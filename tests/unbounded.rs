@@ -1,11 +1,11 @@
 #![allow(clippy::bool_assert_comparison)]
 
-use std::sync::atomic::{AtomicUsize, Ordering};
-
 use concurrent_queue::{ConcurrentQueue, PopError, PushError};
 
 #[cfg(not(target_family = "wasm"))]
 use easy_parallel::Parallel;
+#[cfg(not(target_family = "wasm"))]
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(target_family = "wasm")]
 use wasm_bindgen_test::wasm_bindgen_test as test;
