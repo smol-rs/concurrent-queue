@@ -38,8 +38,10 @@ jobs:
       - name: Install Rust
         run: rustup update ${{ matrix.rust }} && rustup default ${{ matrix.rust }}
       - run: rustup target add thumbv7m-none-eabi
-      - name: Install cargo-hack
-        uses: taiki-e/install-action@cargo-hack
+      - name: Install cargo-hack and wasm-pack
+        uses: taiki-e/install-action
+        with:
+          tool: cargo-hack,wasm-pack
       - run: cargo build --all --all-features --all-targets
       - run: cargo hack build --feature-powerset --no-dev-deps
       - run: cargo hack build --feature-powerset --no-dev-deps --target thumbv7m-none-eabi --skip std,default
@@ -50,6 +52,11 @@ jobs:
         env:
           RUSTFLAGS: ${{ env.RUSTFLAGS }} --cfg loom
           LOOM_MAX_PREEMPTIONS: 2
+      - name: Check WASM tests
+        run: cargo build --target wasm32-unknown-unknown
+      - run: wasm-pack test
+      - run: wasm-pack test --no-default-features
+      - run: wasm-pack test --no-default-features --features portable-atomic
 
   msrv:
     runs-on: ubuntu-latest

@@ -5,6 +5,9 @@ use loom::sync::atomic::{AtomicUsize, Ordering};
 use loom::sync::{Arc, Condvar, Mutex};
 use loom::thread;
 
+#[cfg(target_family = "wasm")]
+use wasm_bindgen_test::wasm_bindgen_test as test;
+
 /// A basic MPMC channel based on a ConcurrentQueue and loom primitives.
 struct Channel<T> {
     /// The queue used to contain items.
