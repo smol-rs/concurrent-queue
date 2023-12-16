@@ -3,6 +3,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use concurrent_queue::{ConcurrentQueue, PopError, PushError};
+
+#[cfg(not(target_family = "wasm"))]
 use easy_parallel::Parallel;
 
 #[cfg(target_family = "wasm")]
@@ -61,6 +63,7 @@ fn len_empty_full() {
     assert_eq!(q.is_full(), false);
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn len() {
     const COUNT: usize = if cfg!(miri) { 50 } else { 25_000 };
@@ -133,6 +136,7 @@ fn close() {
     assert_eq!(q.pop(), Err(PopError::Closed));
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn spsc() {
     const COUNT: usize = if cfg!(miri) { 100 } else { 100_000 };
@@ -159,6 +163,7 @@ fn spsc() {
         .run();
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn mpmc() {
     const COUNT: usize = if cfg!(miri) { 100 } else { 25_000 };
@@ -190,6 +195,7 @@ fn mpmc() {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn drops() {
     const RUNS: usize = if cfg!(miri) { 10 } else { 100 };
@@ -238,6 +244,7 @@ fn drops() {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[test]
 fn linearizable() {
     const COUNT: usize = if cfg!(miri) { 500 } else { 25_000 };
