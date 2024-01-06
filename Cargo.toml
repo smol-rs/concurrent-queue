@@ -9,7 +9,7 @@ authors = [
     "Taiki Endo <te316e89@gmail.com>",
     "John Nunley <dev@notgull.net>"
 ]
-edition = "2018"
+edition = "2021"
 rust-version = "1.60"
 description = "Concurrent multi-producer multi-consumer queue"
 license = "Apache-2.0 OR MIT"
