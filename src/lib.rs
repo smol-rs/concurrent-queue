@@ -181,6 +181,54 @@ impl<T> ConcurrentQueue<T> {
         }
     }
 
+    /// Push an element into the queue, potentially displacing another element.
+    /// 
+    /// Attempts to push an element into the queue. If the queue is full, one item from the
+    /// queue is replaced with the provided item. The displaced item is returned as `Some(T)`.
+    /// If the queue is closed, an error is returned.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use concurrent_queue::{ConcurrentQueue, ForcePushError, PushError};
+    /// 
+    /// let q = ConcurrentQueue::bounded(3);
+    /// 
+    /// // We can push to the queue.
+    /// for i in 1..=3 {
+    ///     assert_eq!(q.force_push(i), Ok(None));
+    /// }
+    /// 
+    /// // Push errors because the queue is now full.
+    /// assert_eq!(q.push(4), Err(PushError::Full(4)));
+    /// 
+    /// // Pushing a new value replaces the old ones.
+    /// assert_eq!(q.force_push(5), Ok(Some(1)));
+    /// assert_eq!(q.force_push(6), Ok(Some(2)));
+    /// 
+    /// // Close the queue to stop further pushes.
+    /// q.close();
+    /// 
+    /// // Pushing will return an error.
+    /// assert_eq!(q.force_push(7), Err(ForcePushError(7)));
+    /// 
+    /// // Popping items will return the force-pushed ones.
+    /// assert_eq!(q.pop(), Ok(3));
+    /// assert_eq!(q.pop(), Ok(5));
+    /// assert_eq!(q.pop(), Ok(6));
+    /// ```
+    pub fn force_push(&self, value: T) -> Result<Option<T>, ForcePushError<T>> {
+        match &self.0 {
+            Inner::Single(q) => q.force_push(value),
+            Inner::Bounded(q) => q.force_push(value),
+            Inner::Unbounded(q) => match q.push(value) {
+                Ok(()) => Ok(None),
+                Err(PushError::Closed(value)) => Err(ForcePushError(value)),
+                Err(PushError::Full(_)) => unreachable!()
+            }
+        }
+    }
+
     /// Attempts to pop an item from the queue.
     ///
     /// If the queue is empty, an error is returned.
@@ -531,6 +579,32 @@ impl<T> fmt::Display for PushError<T> {
         }
     }
 }
+
+/// Error that occurs when force-pushing into a full queue.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct ForcePushError<T>(pub T);
+
+impl<T> ForcePushError<T> {
+    /// Return the inner value that failed to be force-pushed.
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for ForcePushError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ForcePushError").field(&self.0).finish()
+    }
+}
+
+impl<T> fmt::Display for ForcePushError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Closed")
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T: fmt::Debug> error::Error for ForcePushError<T> {}
 
 /// Equivalent to `atomic::fence(Ordering::SeqCst)`, but in some cases faster.
 #[inline]

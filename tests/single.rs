@@ -1,6 +1,6 @@
 #![allow(clippy::bool_assert_comparison)]
 
-use concurrent_queue::{ConcurrentQueue, PopError, PushError};
+use concurrent_queue::{ConcurrentQueue, ForcePushError, PopError, PushError};
 
 #[cfg(not(target_family = "wasm"))]
 use easy_parallel::Parallel;
@@ -62,6 +62,21 @@ fn close() {
 
     assert_eq!(q.push(20), Err(PushError::Closed(20)));
     assert_eq!(q.pop(), Ok(10));
+    assert_eq!(q.pop(), Err(PopError::Closed));
+}
+
+#[test]
+fn force_push() {
+    let q = ConcurrentQueue::<i32>::bounded(1);
+    assert_eq!(q.force_push(10), Ok(None));
+
+    assert!(!q.is_closed());
+    assert_eq!(q.force_push(20), Ok(Some(10)));
+    assert_eq!(q.force_push(30), Ok(Some(20)));
+
+    assert!(q.close());
+    assert_eq!(q.force_push(40), Err(ForcePushError(40)));
+    assert_eq!(q.pop(), Ok(30));
     assert_eq!(q.pop(), Err(PopError::Closed));
 }
 

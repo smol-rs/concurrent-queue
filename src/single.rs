@@ -1,10 +1,11 @@
 use core::mem::MaybeUninit;
+use core::ptr;
 
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::cell::UnsafeCell;
 #[allow(unused_imports)]
 use crate::sync::prelude::*;
-use crate::{busy_wait, PopError, PushError};
+use crate::{busy_wait, PopError, PushError, ForcePushError};
 
 const LOCKED: usize = 1 << 0;
 const PUSHED: usize = 1 << 1;
@@ -44,6 +45,55 @@ impl<T> Single<T> {
             Err(PushError::Closed(value))
         } else {
             Err(PushError::Full(value))
+        }
+    }
+
+    /// Attempts to push an item into the queue, displacing another if necessary.
+    pub fn force_push(&self, value: T) -> Result<Option<T>, ForcePushError<T>> {
+        // Attempt to lock the slot.
+        let mut state = 0;
+
+        loop {
+            // Lock the slot.
+            let prev = self
+                .state
+                .compare_exchange(state, LOCKED | PUSHED, Ordering::SeqCst, Ordering::SeqCst)
+                .unwrap_or_else(|x| x);
+
+            if prev & CLOSED != 0 {
+                return Err(ForcePushError(value));
+            }
+
+            if prev == state {
+                // Swap out the value.
+                // SAFETY: We have locked the state.
+                let prev_value = unsafe {
+                    self.slot
+                        .with_mut(move |slot| ptr::replace(slot, MaybeUninit::new(value)))
+                };
+
+                // We can unlock the slot now.
+                self.state.fetch_and(!LOCKED, Ordering::Release);
+
+                // If the value was pushed, initialize it and return it.
+                let prev_value = if prev & PUSHED == 0 {
+                    None
+                } else {
+                    Some(unsafe { prev_value.assume_init() })
+                };
+
+                // Unlock the slot.
+                return Ok(prev_value);
+            }
+
+            // Try to go for the current (pushed) state.
+            if prev & LOCKED == 0 {
+                state = prev;
+            } else {
+                // State is locked.
+                busy_wait();
+                state = prev & !LOCKED;
+            }
         }
     }
 
