@@ -7,7 +7,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::cell::UnsafeCell;
 #[allow(unused_imports)]
 use crate::sync::prelude::*;
-use crate::{busy_wait, PopError, PushError, ForcePushError};
+use crate::{busy_wait, ForcePushError, PopError, PushError};
 
 /// A slot in a queue.
 struct Slot<T> {
@@ -115,9 +115,7 @@ impl<T> Bounded<T> {
                 // SAFETY: We know this is initialized, since it's covered by the current queue.
                 let old = unsafe {
                     slot.value
-                        .get()
-                        .replace(MaybeUninit::new(value))
-                        .assume_init()
+                        .with_mut(|slot| slot.replace(MaybeUninit::new(value)).assume_init())
                 };
 
                 // Update the stamp.

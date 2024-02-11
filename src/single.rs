@@ -5,7 +5,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::cell::UnsafeCell;
 #[allow(unused_imports)]
 use crate::sync::prelude::*;
-use crate::{busy_wait, PopError, PushError, ForcePushError};
+use crate::{busy_wait, ForcePushError, PopError, PushError};
 
 const LOCKED: usize = 1 << 0;
 const PUSHED: usize = 1 << 1;

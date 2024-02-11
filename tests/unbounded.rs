@@ -1,6 +1,6 @@
 #![allow(clippy::bool_assert_comparison)]
 
-use concurrent_queue::{ConcurrentQueue, PopError, PushError, ForcePushError};
+use concurrent_queue::{ConcurrentQueue, ForcePushError, PopError, PushError};
 
 #[cfg(not(target_family = "wasm"))]
 use easy_parallel::Parallel;
