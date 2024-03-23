@@ -7,7 +7,7 @@ use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::cell::UnsafeCell;
 #[allow(unused_imports)]
 use crate::sync::prelude::*;
-use crate::{busy_wait, PopError, PushError};
+use crate::{busy_wait, ForcePushError, PopError, PushError};
 
 /// A slot in a queue.
 struct Slot<T> {
@@ -83,6 +83,74 @@ impl<T> Bounded<T> {
 
     /// Attempts to push an item into the queue.
     pub fn push(&self, value: T) -> Result<(), PushError<T>> {
+        self.push_or_else(value, |value, tail, _, _| {
+            let head = self.head.load(Ordering::Relaxed);
+
+            // If the head lags one lap behind the tail as well...
+            if head.wrapping_add(self.one_lap) == tail {
+                // ...then the queue is full.
+                Err(PushError::Full(value))
+            } else {
+                Ok(value)
+            }
+        })
+    }
+
+    /// Pushes an item into the queue, displacing another item if needed.
+    pub fn force_push(&self, value: T) -> Result<Option<T>, ForcePushError<T>> {
+        let result = self.push_or_else(value, |value, tail, new_tail, slot| {
+            let head = tail.wrapping_sub(self.one_lap);
+            let new_head = new_tail.wrapping_sub(self.one_lap);
+
+            // Try to move the head.
+            if self
+                .head
+                .compare_exchange_weak(head, new_head, Ordering::SeqCst, Ordering::Relaxed)
+                .is_ok()
+            {
+                // Move the tail.
+                self.tail.store(new_tail, Ordering::SeqCst);
+
+                // Swap out the old value.
+                // SAFETY: We know this is initialized, since it's covered by the current queue.
+                let old = unsafe {
+                    slot.value
+                        .with_mut(|slot| slot.replace(MaybeUninit::new(value)).assume_init())
+                };
+
+                // Update the stamp.
+                slot.stamp.store(tail + 1, Ordering::Release);
+
+                // Return a PushError.
+                Err(PushError::Full(old))
+            } else {
+                Ok(value)
+            }
+        });
+
+        match result {
+            Ok(()) => Ok(None),
+            Err(PushError::Full(old_value)) => Ok(Some(old_value)),
+            Err(PushError::Closed(value)) => Err(ForcePushError(value)),
+        }
+    }
+
+    /// Attempts to push an item into the queue, running a closure on failure.
+    ///
+    /// `fail` is run when there is no more room left in the tail of the queue. The parameters of
+    /// this function are as follows:
+    ///
+    /// - The item that failed to push.
+    /// - The value of `self.tail` before the new value would be inserted.
+    /// - The value of `self.tail` after the new value would be inserted.
+    /// - The slot that we attempted to push into.
+    ///
+    /// If `fail` returns `Ok(val)`, we will try pushing `val` to the head of the queue. Otherwise,
+    /// this function will return the error.
+    fn push_or_else<F>(&self, mut value: T, mut fail: F) -> Result<(), PushError<T>>
+    where
+        F: FnMut(T, usize, usize, &Slot<T>) -> Result<T, PushError<T>>,
+    {
         let mut tail = self.tail.load(Ordering::Relaxed);
 
         loop {
@@ -95,22 +163,23 @@ impl<T> Bounded<T> {
             let index = tail & (self.mark_bit - 1);
             let lap = tail & !(self.one_lap - 1);
 
+            // Calculate the new location of the tail.
+            let new_tail = if index + 1 < self.buffer.len() {
+                // Same lap, incremented index.
+                // Set to `{ lap: lap, mark: 0, index: index + 1 }`.
+                tail + 1
+            } else {
+                // One lap forward, index wraps around to zero.
+                // Set to `{ lap: lap.wrapping_add(1), mark: 0, index: 0 }`.
+                lap.wrapping_add(self.one_lap)
+            };
+
             // Inspect the corresponding slot.
             let slot = &self.buffer[index];
             let stamp = slot.stamp.load(Ordering::Acquire);
 
             // If the tail and the stamp match, we may attempt to push.
             if tail == stamp {
-                let new_tail = if index + 1 < self.buffer.len() {
-                    // Same lap, incremented index.
-                    // Set to `{ lap: lap, mark: 0, index: index + 1 }`.
-                    tail + 1
-                } else {
-                    // One lap forward, index wraps around to zero.
-                    // Set to `{ lap: lap.wrapping_add(1), mark: 0, index: 0 }`.
-                    lap.wrapping_add(self.one_lap)
-                };
-
                 // Try moving the tail.
                 match self.tail.compare_exchange_weak(
                     tail,
@@ -132,13 +201,9 @@ impl<T> Bounded<T> {
                 }
             } else if stamp.wrapping_add(self.one_lap) == tail + 1 {
                 crate::full_fence();
-                let head = self.head.load(Ordering::Relaxed);
 
-                // If the head lags one lap behind the tail as well...
-                if head.wrapping_add(self.one_lap) == tail {
-                    // ...then the queue is full.
-                    return Err(PushError::Full(value));
-                }
+                // We've failed to push; run our failure closure.
+                value = fail(value, tail, new_tail, slot)?;
 
                 // Loom complains if there isn't an explicit busy wait here.
                 #[cfg(loom)]
