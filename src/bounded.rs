@@ -136,6 +136,17 @@ impl<T> Bounded<T> {
     }
 
     /// Attempts to push an item into the queue, running a closure on failure.
+    /// 
+    /// `fail` is run when there is no more room left in the tail of the queue. The parameters of
+    /// this function are as follows:
+    /// 
+    /// - The item that failed to push.
+    /// - The value of `self.tail` before the new value would be inserted.
+    /// - The value of `self.tail` after the new value would be inserted.
+    /// - The slot that we attempted to push into.
+    /// 
+    /// If `fail` returns `Ok(val)`, we will try pushing `val` to the head of the queue. Otherwise,
+    /// this function will return the error.
     fn push_or_else<F>(&self, mut value: T, mut fail: F) -> Result<(), PushError<T>>
     where
         F: FnMut(T, usize, usize, &Slot<T>) -> Result<T, PushError<T>>,
