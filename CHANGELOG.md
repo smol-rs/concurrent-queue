@@ -1,3 +1,7 @@
+# Version 2.5.0
+
+- Relax MSRV to 1.60. (#57)
+
 # Version 2.4.0
 
 - Remove unnecessary heap allocations from inside of the `ConcurrentQueue` type. (#53)
