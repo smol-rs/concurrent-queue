@@ -82,7 +82,7 @@ impl<T> Single<T> {
                     Some(unsafe { prev_value.assume_init() })
                 };
 
-                // Unlock the slot.
+                // Return the old value.
                 return Ok(prev_value);
             }
 
