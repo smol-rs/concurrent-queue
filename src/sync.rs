@@ -30,13 +30,15 @@ mod sync_impl {
 
 #[cfg(loom)]
 mod sync_impl {
-    pub(crate) use loom::{cell, hint::spin_loop};
+    pub(crate) use loom::cell;
 
     pub(crate) mod atomic {
         pub(crate) use loom::sync::atomic::*;
     }
 
     #[cfg(not(feature = "std"))]
+    pub(crate) use loom::hint::spin_loop;
+    #[cfg(feature = "std")]
     pub(crate) use loom::thread::yield_now;
 }
 
