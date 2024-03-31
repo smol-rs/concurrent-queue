@@ -36,6 +36,9 @@ mod sync_impl {
         pub(crate) use loom::sync::atomic::*;
     }
 
+    #[cfg(not(feature = "std"))]
+    pub(crate) use loom::hint::spin_loop;
+    #[cfg(feature = "std")]
     pub(crate) use loom::thread::yield_now;
 }
 
