@@ -107,6 +107,11 @@ jobs:
         env:
           RUSTFLAGS: "--cfg=loom"
           LOOM_MAX_PREEMPTIONS: 4
+      - name: Loom tests without default features
+        run: cargo test --release --test loom --features loom --no-default-features 
+        env:
+          RUSTFLAGS: "--cfg=loom"
+          LOOM_MAX_PREEMPTIONS: 4
 
   security_audit:
     permissions:
