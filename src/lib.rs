@@ -165,13 +165,6 @@ impl<T> ConcurrentQueue<T> {
         }
     );
 
-    // Loom's primitives are not const constructible.
-    #[cfg(loom)]
-    #[allow(missing_docs)]
-    pub fn unbounded() -> ConcurrentQueue<T> {
-        ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
-    }
-
     /// Attempts to push an item into the queue.
     ///
     /// If the queue is full or closed, the item is returned back as an error.
