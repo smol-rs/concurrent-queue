@@ -149,7 +149,23 @@ pub struct Unbounded<T> {
 
 impl<T> Unbounded<T> {
     /// Creates a new unbounded queue.
+    #[cfg(not(loom))]
     pub const fn new() -> Unbounded<T> {
+        Unbounded {
+            head: CachePadded::new(Position {
+                block: AtomicPtr::new(ptr::null_mut()),
+                index: AtomicUsize::new(0),
+            }),
+            tail: CachePadded::new(Position {
+                block: AtomicPtr::new(ptr::null_mut()),
+                index: AtomicUsize::new(0),
+            }),
+        }
+    }
+
+    // Loom's AtomicPtrs are not const constructible.
+    #[cfg(loom)]
+    pub fn new() -> Unbounded<T> {
         Unbounded {
             head: CachePadded::new(Position {
                 block: AtomicPtr::new(ptr::null_mut()),

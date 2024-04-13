@@ -140,6 +140,13 @@ impl<T> ConcurrentQueue<T> {
     ///
     /// let q = ConcurrentQueue::<i32>::unbounded();
     /// ```
+    #[cfg(not(loom))]
+    pub const fn unbounded() -> ConcurrentQueue<T> {
+        ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
+    }
+
+    // Loom's primitives are not const constructible.
+    #[cfg(loom)]
     pub const fn unbounded() -> ConcurrentQueue<T> {
         ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
     }
