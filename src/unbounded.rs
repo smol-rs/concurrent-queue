@@ -149,7 +149,7 @@ pub struct Unbounded<T> {
 
 impl<T> Unbounded<T> {
     /// Creates a new unbounded queue.
-    pub fn new() -> Unbounded<T> {
+    pub const fn new() -> Unbounded<T> {
         Unbounded {
             head: CachePadded::new(Position {
                 block: AtomicPtr::new(ptr::null_mut()),

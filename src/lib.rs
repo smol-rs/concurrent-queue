@@ -140,7 +140,7 @@ impl<T> ConcurrentQueue<T> {
     ///
     /// let q = ConcurrentQueue::<i32>::unbounded();
     /// ```
-    pub fn unbounded() -> ConcurrentQueue<T> {
+    pub const fn unbounded() -> ConcurrentQueue<T> {
         ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
     }
 
