@@ -147,7 +147,7 @@ impl<T> ConcurrentQueue<T> {
 
     // Loom's primitives are not const constructible.
     #[cfg(loom)]
-    pub const fn unbounded() -> ConcurrentQueue<T> {
+    pub fn unbounded() -> ConcurrentQueue<T> {
         ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
     }
 
