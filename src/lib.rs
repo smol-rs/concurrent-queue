@@ -150,7 +150,7 @@ impl<T> ConcurrentQueue<T> {
     }
 
     const_fn!(
-        const_if: #[cfg(loom)];
+        const_if: #[cfg(not(loom))];
         /// Creates a new unbounded queue.
         ///
         /// # Examples
