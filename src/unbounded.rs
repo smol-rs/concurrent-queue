@@ -4,6 +4,7 @@ use core::ptr;
 
 use crossbeam_utils::CachePadded;
 
+use crate::const_fn;
 use crate::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
 use crate::sync::cell::UnsafeCell;
 #[allow(unused_imports)]
@@ -148,19 +149,22 @@ pub struct Unbounded<T> {
 }
 
 impl<T> Unbounded<T> {
-    /// Creates a new unbounded queue.
-    pub fn new() -> Unbounded<T> {
-        Unbounded {
-            head: CachePadded::new(Position {
-                block: AtomicPtr::new(ptr::null_mut()),
-                index: AtomicUsize::new(0),
-            }),
-            tail: CachePadded::new(Position {
-                block: AtomicPtr::new(ptr::null_mut()),
-                index: AtomicUsize::new(0),
-            }),
+    const_fn!(
+        const_if: #[cfg(not(loom))];
+        /// Creates a new unbounded queue.
+        pub const fn new() -> Unbounded<T> {
+            Unbounded {
+                head: CachePadded::new(Position {
+                    block: AtomicPtr::new(ptr::null_mut()),
+                    index: AtomicUsize::new(0),
+                }),
+                tail: CachePadded::new(Position {
+                    block: AtomicPtr::new(ptr::null_mut()),
+                    index: AtomicUsize::new(0),
+                }),
+            }
         }
-    }
+    );
 
     /// Pushes an item into the queue.
     pub fn push(&self, value: T) -> Result<(), PushError<T>> {

@@ -75,6 +75,24 @@ mod unbounded;
 
 mod sync;
 
+/// Make the given function const if the given condition is true.
+macro_rules! const_fn {
+    (
+        const_if: #[cfg($($cfg:tt)+)];
+        $(#[$($attr:tt)*])*
+        $vis:vis const fn $($rest:tt)*
+    ) => {
+        #[cfg($($cfg)+)]
+        $(#[$($attr)*])*
+        $vis const fn $($rest)*
+        #[cfg(not($($cfg)+))]
+        $(#[$($attr)*])*
+        $vis fn $($rest)*
+    };
+}
+
+pub(crate) use const_fn;
+
 /// A concurrent queue.
 ///
 /// # Examples
@@ -131,18 +149,21 @@ impl<T> ConcurrentQueue<T> {
         }
     }
 
-    /// Creates a new unbounded queue.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use concurrent_queue::ConcurrentQueue;
-    ///
-    /// let q = ConcurrentQueue::<i32>::unbounded();
-    /// ```
-    pub fn unbounded() -> ConcurrentQueue<T> {
-        ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
-    }
+    const_fn!(
+        const_if: #[cfg(not(loom))];
+        /// Creates a new unbounded queue.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use concurrent_queue::ConcurrentQueue;
+        ///
+        /// let q = ConcurrentQueue::<i32>::unbounded();
+        /// ```
+        pub const fn unbounded() -> ConcurrentQueue<T> {
+            ConcurrentQueue(Inner::Unbounded(Unbounded::new()))
+        }
+    );
 
     /// Attempts to push an item into the queue.
     ///
