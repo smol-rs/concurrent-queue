@@ -197,11 +197,93 @@ fn linearizable() {
     let q = ConcurrentQueue::bounded(1);
 
     Parallel::new()
-        .each(0..THREADS, |_| {
+        .each(0..THREADS / 2, |_| {
             for _ in 0..COUNT {
                 while q.push(0).is_err() {}
                 q.pop().unwrap();
             }
         })
+        .each(0..THREADS / 2, |_| {
+            for _ in 0..COUNT {
+                if q.force_push(0).unwrap().is_none() {
+                    q.pop().unwrap();
+                }
+            }
+        })
         .run();
+}
+
+#[cfg(not(target_family = "wasm"))]
+#[test]
+fn spsc_ring_buffer() {
+    const COUNT: usize = if cfg!(miri) { 200 } else { 100_000 };
+
+    let t = AtomicUsize::new(1);
+    let q = ConcurrentQueue::<usize>::bounded(1);
+    let v = (0..COUNT).map(|_| AtomicUsize::new(0)).collect::<Vec<_>>();
+
+    Parallel::new()
+        .add(|| loop {
+            match t.load(Ordering::SeqCst) {
+                0 if q.is_empty() => break,
+
+                _ => {
+                    while let Ok(n) = q.pop() {
+                        v[n].fetch_add(1, Ordering::SeqCst);
+                    }
+                }
+            }
+        })
+        .add(|| {
+            for i in 0..COUNT {
+                if let Ok(Some(n)) = q.force_push(i) {
+                    v[n].fetch_add(1, Ordering::SeqCst);
+                }
+            }
+
+            t.fetch_sub(1, Ordering::SeqCst);
+        })
+        .run();
+
+    for c in v {
+        assert_eq!(c.load(Ordering::SeqCst), 1);
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+#[test]
+fn mpmc_ring_buffer() {
+    const COUNT: usize = if cfg!(miri) { 100 } else { 25_000 };
+    const THREADS: usize = 4;
+
+    let t = AtomicUsize::new(THREADS);
+    let q = ConcurrentQueue::<usize>::bounded(1);
+    let v = (0..COUNT).map(|_| AtomicUsize::new(0)).collect::<Vec<_>>();
+
+    Parallel::new()
+        .each(0..THREADS, |_| loop {
+            match t.load(Ordering::SeqCst) {
+                0 if q.is_empty() => break,
+
+                _ => {
+                    while let Ok(n) = q.pop() {
+                        v[n].fetch_add(1, Ordering::SeqCst);
+                    }
+                }
+            }
+        })
+        .each(0..THREADS, |_| {
+            for i in 0..COUNT {
+                if let Ok(Some(n)) = q.force_push(i) {
+                    v[n].fetch_add(1, Ordering::SeqCst);
+                }
+            }
+
+            t.fetch_sub(1, Ordering::SeqCst);
+        })
+        .run();
+
+    for c in v {
+        assert_eq!(c.load(Ordering::SeqCst), THREADS);
+    }
 }

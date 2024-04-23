@@ -1,6 +1,6 @@
 #![cfg(loom)]
 
-use concurrent_queue::{ConcurrentQueue, PopError, PushError};
+use concurrent_queue::{ConcurrentQueue, ForcePushError, PopError, PushError};
 use loom::sync::atomic::{AtomicUsize, Ordering};
 use loom::sync::{Arc, Condvar, Mutex};
 use loom::thread;
@@ -115,9 +115,26 @@ impl<T> Sender<T> {
             }
         }
     }
+
+    /// Send a value forcefully.
+    fn force_send(&self, value: T) -> Result<Option<T>, T> {
+        match self.channel.queue.force_push(value) {
+            Ok(bumped) => {
+                self.channel.push_event.signal();
+                Ok(bumped)
+            }
+
+            Err(ForcePushError(val)) => Err(val),
+        }
+    }
 }
 
 impl<T> Receiver<T> {
+    /// Channel capacity.
+    fn capacity(&self) -> Option<usize> {
+        self.channel.queue.capacity()
+    }
+
     /// Receive a value.
     ///
     /// Returns an error if the channel is closed.
@@ -243,6 +260,46 @@ fn spsc() {
         // Values may not be in order.
         recv_values.sort_unstable();
         assert_eq!(recv_values, (0..limit).collect::<Vec<_>>());
+
+        // Join the handle before we exit.
+        handle.join().unwrap();
+    });
+}
+
+#[test]
+fn spsc_force() {
+    run_test(|q, limit| {
+        // Create a new pair of senders/receivers.
+        let (tx, rx) = pair(q);
+
+        // Push each onto a thread and run them.
+        let handle = thread::spawn(move || {
+            for i in 0..limit {
+                if tx.force_send(i).is_err() {
+                    break;
+                }
+            }
+        });
+
+        let mut recv_values = vec![];
+
+        loop {
+            match rx.recv() {
+                Ok(value) => recv_values.push(value),
+                Err(()) => break,
+            }
+        }
+
+        // Values may not be in order.
+        recv_values.sort_unstable();
+        let cap = rx.capacity().unwrap_or(usize::MAX);
+        for (left, right) in (0..limit)
+            .rev()
+            .take(cap)
+            .zip(recv_values.into_iter().rev())
+        {
+            assert_eq!(left, right);
+        }
 
         // Join the handle before we exit.
         handle.join().unwrap();
