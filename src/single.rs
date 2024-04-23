@@ -72,15 +72,15 @@ impl<T> Single<T> {
                         .with_mut(move |slot| ptr::replace(slot, MaybeUninit::new(value)))
                 };
 
-                // We can unlock the slot now.
-                self.state.fetch_and(!LOCKED, Ordering::Release);
-
                 // If the value was pushed, initialize it and return it.
                 let prev_value = if prev & PUSHED == 0 {
                     None
                 } else {
                     Some(unsafe { prev_value.assume_init() })
                 };
+
+                // We can unlock the slot now.
+                self.state.fetch_and(!LOCKED, Ordering::Release);
 
                 // Return the old value.
                 return Ok(prev_value);
