@@ -65,22 +65,26 @@ impl<T> Single<T> {
             }
 
             if prev == state {
-                // Swap out the value.
-                // SAFETY: We have locked the state.
-                let prev_value = unsafe {
-                    self.slot
-                        .with_mut(move |slot| ptr::replace(slot, MaybeUninit::new(value)))
+                // If the value was pushed, swap out the value.
+                let prev_value = if prev & PUSHED == 0 {
+                    // SAFETY: write is safe because we have locked the state.
+                    self.slot.with_mut(|slot| unsafe {
+                        slot.write(MaybeUninit::new(value));
+                    });
+                    None
+                } else {
+                    // SAFETY: replace is safe because we have locked the state, and
+                    // assume_init is safe because we have checked that the value was pushed.
+                    let prev_value = unsafe {
+                        self.slot.with_mut(move |slot| {
+                            ptr::replace(slot, MaybeUninit::new(value)).assume_init()
+                        })
+                    };
+                    Some(prev_value)
                 };
 
                 // We can unlock the slot now.
                 self.state.fetch_and(!LOCKED, Ordering::Release);
-
-                // If the value was pushed, initialize it and return it.
-                let prev_value = if prev & PUSHED == 0 {
-                    None
-                } else {
-                    Some(unsafe { prev_value.assume_init() })
-                };
 
                 // Return the old value.
                 return Ok(prev_value);
