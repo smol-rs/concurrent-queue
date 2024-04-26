@@ -1,3 +1,9 @@
+# Version 2.5.0
+
+- Add a `force_push` method that can be used to add an element to the queue by displacing another. (#58)
+- Make `ConcurrentQueue::unbounded()` into a `const` function. (#67)
+- Fix a compilation error in the Loom implementation. (#65)
+
 # Version 2.4.0
 
 - Remove unnecessary heap allocations from inside of the `ConcurrentQueue` type. (#53)
