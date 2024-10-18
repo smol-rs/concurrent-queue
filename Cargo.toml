@@ -42,6 +42,9 @@ fastrand = "2.0.0"
 [target.'cfg(target_family = "wasm")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(loom)'] }
+
 [features]
 default = ["std"]
 std = []
