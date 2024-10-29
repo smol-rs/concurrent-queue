@@ -41,6 +41,7 @@ struct Slot<T> {
 
 impl<T> Slot<T> {
     #[cfg(not(loom))]
+    #[allow(clippy::declare_interior_mutable_const)]
     const UNINIT: Slot<T> = Slot {
         value: UnsafeCell::new(MaybeUninit::uninit()),
         state: AtomicUsize::new(0),
