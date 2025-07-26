@@ -1,7 +1,9 @@
-use std::{any::type_name, fmt::Debug};
+#![allow(clippy::incompatible_msrv)] // false positive: https://github.com/rust-lang/rust-clippy/issues/12257#issuecomment-2093667187
+
+use std::{any::type_name, fmt::Debug, hint::black_box};
 
 use concurrent_queue::{ConcurrentQueue, PopError};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use easy_parallel::Parallel;
 
 const COUNT: usize = 100_000;
