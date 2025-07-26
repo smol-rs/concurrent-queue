@@ -1,7 +1,7 @@
 # concurrent-queue
 
-[![Build](https://github.com/smol-rs/concurrent-queue/workflows/Build%20and%20test/badge.svg)](
-https://github.com/smol-rs/concurrent-queue/actions)
+[![CI](https://github.com/smol-rs/concurrent-queue/actions/workflows/ci.yml/badge.svg)](
+https://github.com/smol-rs/concurrent-queue/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0_OR_MIT-blue.svg)](
 https://github.com/smol-rs/concurrent-queue)
 [![Cargo](https://img.shields.io/crates/v/concurrent-queue.svg)](
